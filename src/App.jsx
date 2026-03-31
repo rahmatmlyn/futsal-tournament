@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 
-const ADMIN_PASSWORD = "futsal2024";
+const ADMIN_PASSWORD = "***REMOVED***";
 
 const initialTeams = {
   A: ["Team A1", "Team A2", "Team A3"],
