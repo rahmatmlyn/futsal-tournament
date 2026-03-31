@@ -92,15 +92,9 @@ export default function App() {
   const statsB = calcStats(teams.B, matches.B);
   const statsC = calcStats(teams.C, matches.C);
 
-  const advanceTeams = [statsA[0], statsB[0], ...statsC.slice(0, 2)];
-  const runners = [statsA[1], statsB[1]];
-  runners.sort((a, b) => {
-    if (b.pts !== a.pts) return b.pts - a.pts;
-    if (b.gd !== a.gd) return b.gd - a.gd;
-    return a.cards - b.cards;
-  });
-  const bestRunner = runners[0];
-  const semifinalists = [...advanceTeams, bestRunner];
+  const advanceTeams = [statsA[0], statsB[0], statsC[0]];
+  const runnerC = statsC[1];
+  const semifinalists = [...advanceTeams, runnerC];
 
   return (
     <div style={{ fontFamily: "Inter,sans-serif", background: "#f8fafc", minHeight: "100vh", padding: "16px" }}>
@@ -278,26 +272,17 @@ export default function App() {
                     <div style={{ marginLeft: "auto", background: COLORS.C, color: "#fff", borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700 }}>LOLOS ✓</div>
                   </div>
                 ))}
-                {/* Best runner up */}
+                {/* Runner Up Grup C */}
                 <div style={{ borderTop: "2px dashed #e2e8f0", paddingTop: 10 }}>
-                  <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8, fontWeight: 600 }}>🔍 Runner Up Terbaik (dari Grup A & B)</div>
-                  {runners.map((s, i) => {
-                    const grp = teams.A.includes(s.team) ? "A" : "B";
-                    const isBest = i === 0;
-                    return (
-                      <div key={s.team} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", borderRadius: 10, background: isBest ? "#f0fdf4" : "#fff", border: `2px solid ${isBest?"#10b981":"#e2e8f0"}`, marginBottom: 6 }}>
-                        <div style={{ width: 36, height: 36, borderRadius: "50%", background: isBest?"#10b981":"#94a3b8", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13 }}>🥈</div>
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: 14, color: "#1e293b" }}>{s.team}</div>
-                          <div style={{ fontSize: 12, color: "#64748b" }}>Runner Up Grup {grp} · {s.pts} poin · SG {s.gd>0?"+":""}{s.gd} · Kartu: {s.cards}</div>
-                        </div>
-                        {isBest && <div style={{ marginLeft: "auto", background: "#10b981", color: "#fff", borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700 }}>LOLOS ✓</div>}
-                        {!isBest && runners[0].pts===s.pts && runners[0].gd===s.gd && runners[0].cards===s.cards && (
-                          <div style={{ marginLeft: "auto", background: "#f59e0b", color: "#fff", borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700 }}>ADU PENALTI</div>
-                        )}
-                      </div>
-                    );
-                  })}
+                  <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8, fontWeight: 600 }}>🔍 Runner Up Grup C</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 16px", borderRadius: 10, background: "#f0fdf4", border: "2px solid #10b981" }}>
+                    <div style={{ width: 36, height: 36, borderRadius: "50%", background: "#10b981", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13 }}>🥈</div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "#1e293b" }}>{runnerC?.team}</div>
+                      <div style={{ fontSize: 12, color: "#64748b" }}>Runner Up Grup C · {runnerC?.pts} poin · SG {runnerC?.gd>0?"+":""}{runnerC?.gd} · Kartu: {runnerC?.cards}</div>
+                    </div>
+                    <div style={{ marginLeft: "auto", background: "#10b981", color: "#fff", borderRadius: 8, padding: "4px 10px", fontSize: 11, fontWeight: 700 }}>LOLOS ✓</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -328,9 +313,9 @@ export default function App() {
                   ["🏅 Sistem Poin","Menang: 3 · Seri: 1 · Kalah: 0"],
                   ["📋 WO","Menang WO: 3 poin (skor 3-0) · Kalah WO: 0 poin (skor 0-3)"],
                   ["📊 Ranking","Poin → Selisih Gol → H2H → Kartu"],
-                  ["🏆 Lolos","Juara A,B + Top 2 Grup C + 1 Runner Up Terbaik"],
-                  ["🥈 Runner Up Terbaik","Poin → Selisih Gol → Kartu → Adu Penalti 3 penendang"],
-                  ["⚽ Total Lolos","5 tim masuk fase berikutnya"],
+                  ["🏆 Lolos","Juara Grup A, B, C + Runner Up Grup C"],
+                  ["🥈 Runner Up Grup C","Peringkat 2 Grup C langsung lolos"],
+                  ["⚽ Total Lolos","4 tim masuk fase berikutnya (Semifinal)"],
                 ].map(([k,v]) => (
                   <div key={k} style={{ background: "#f8fafc", borderRadius: 8, padding: "10px 12px" }}>
                     <div style={{ fontWeight: 700, color: "#1e293b", marginBottom: 2 }}>{k}</div>
