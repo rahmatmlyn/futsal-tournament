@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { db } from "./firebase";
 import { doc, setDoc, onSnapshot } from "firebase/firestore";
 
-const ADMIN_PASSWORD = "***REMOVED***";
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD;
 
 const initialTeams = {
   A: ["Team A1", "Team A2", "Team A3"],
