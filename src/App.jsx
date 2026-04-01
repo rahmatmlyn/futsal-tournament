@@ -31,6 +31,50 @@ const initKnockout = {
   third: { homeScore: "", awayScore: "", wo: "none" }, // Perebutan juara 3
 };
 
+const initSponsors = []; // { name, logoUrl }
+
+// ─── SPONSOR SECTION ─────────────────────────────────────────────
+function SponsorSection({ sponsors }) {
+  if (!sponsors || sponsors.length === 0) return null;
+  return (
+    <div style={{ background:"#fff", borderRadius:12, overflow:"hidden", boxShadow:"0 1px 6px #0001", marginTop:20 }}>
+      <div style={{ background:"linear-gradient(135deg,#1e3a5f,#2563eb)", color:"#fff", padding:"12px 20px", fontWeight:700, fontSize:14, textAlign:"center", letterSpacing:1 }}>
+        ✨ Sponsor & Pendukung
+      </div>
+      <div style={{ padding:"20px 16px", display:"flex", flexWrap:"wrap", gap:16, justifyContent:"center", alignItems:"center" }}>
+        {sponsors.map((s, i) => (
+          <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:8, padding:"12px 20px", borderRadius:10, border:"1px solid #e2e8f0", background:"#f8fafc", minWidth:100 }}>
+            {s.logoUrl ? (
+              <img src={s.logoUrl} alt={s.name} style={{ height:48, objectFit:"contain", maxWidth:120 }} />
+            ) : (
+              <div style={{ width:48, height:48, borderRadius:10, background:"linear-gradient(135deg,#2563eb,#1d4ed8)", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, color:"#fff", fontWeight:800 }}>
+                {s.name.charAt(0)}
+              </div>
+            )}
+            <span style={{ fontSize:12, fontWeight:700, color:"#1e293b", textAlign:"center" }}>{s.name}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── FOOTER ──────────────────────────────────────────────────────
+function Footer() {
+  return (
+    <div style={{ marginTop:24, padding:"20px 0 8px", textAlign:"center" }}>
+      <div style={{ fontSize:13, color:"#64748b", lineHeight:2 }}>
+        <span style={{ fontWeight:700, color:"#1e293b" }}>⚽ Turnamen Futsal For Unity</span><br/>
+        <span>Kelurahan Kalisari 2026</span><br/>
+        <span style={{ fontSize:11 }}>Dibuat oleh <b>Rahmat Mulyana</b> — Panitia FFU 2026</span>
+      </div>
+      <div style={{ marginTop:8, fontSize:10, color:"#cbd5e1" }}>
+        © 2026 FFU Kalisari · All rights reserved
+      </div>
+    </div>
+  );
+}
+
 function calcStats(teams, matches) {
   const stats = {};
   teams.forEach(t => stats[t] = { team: t, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0, yc: 0, rc: 0, cards: 0 });
@@ -380,7 +424,7 @@ function TopScorers({ allMatches }) {
 }
 
 // ─── PUBLIC VIEW ─────────────────────────────────────────────────
-function PublicView({ teams, matches, knockout, onAdminClick }) {
+function PublicView({ teams, matches, knockout, sponsors, onAdminClick }) {
   const [tab, setTab] = useState("standings");
   const statsA=calcStats(teams.A,matches.A);
   const statsB=calcStats(teams.B,matches.B);
@@ -400,8 +444,9 @@ function PublicView({ teams, matches, knockout, onAdminClick }) {
         {/* Header */}
         <div style={{ background:"linear-gradient(135deg,#1e3a5f,#2563eb)", borderRadius:16, padding:"20px 24px", marginBottom:20, color:"#fff", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div>
-            <h1 style={{ margin:0, fontSize:22, fontWeight:700 }}>⚽ Turnamen Futsal</h1>
-            <p style={{ margin:"4px 0 0", opacity:0.8, fontSize:13 }}>10 Tim · 3 Grup · Live Standings</p>
+            <h1 style={{ margin:0, fontSize:22, fontWeight:700 }}>Turnamen Futsal For Unity Kelurahan Kalisari 2026</h1>
+            <p style={{ margin:"4px 0 0", opacity:0.8, fontSize:13 }}>10 RW · 3 Grup · Live Standings</p>
+            <p style={{ margin:"4px 0 0", opacity:0.8, fontSize:13 }}>Created by Rahmat Mulyana Panitia FFU 2026</p>
           </div>
           <button onClick={onAdminClick} style={{ background:"#ffffff22", border:"1px solid #ffffff44", color:"#fff", borderRadius:10, padding:"8px 14px", cursor:"pointer", fontSize:12, fontWeight:600 }}>
             🔐 Admin
@@ -410,7 +455,7 @@ function PublicView({ teams, matches, knockout, onAdminClick }) {
 
         {/* Tabs */}
         <div style={{ display:"flex", gap:8, marginBottom:16, flexWrap:"wrap" }}>
-          {[["standings","📊 Klasemen"],["schedule","📋 Jadwal & Hasil"],["topscorer","⚽ Top Skor"],["bracket","🏆 Bagan"],["advance","Tim Lolos"]].map(([k,v])=>(
+          {[["standings","📊 Klasemen"],["schedule","📋 Jadwal & Hasil"],["topscorer","⚽ Top Skor"],["advance","Tim Lolos"],["bracket","🏆 Bagan"]].map(([k,v])=>(
             <button key={k} onClick={()=>setTab(k)} style={{ padding:"8px 18px", borderRadius:8, border:"none", cursor:"pointer", fontWeight:600, fontSize:13, background:tab===k?"#2563eb":"#fff", color:tab===k?"#fff":"#64748b", boxShadow:tab===k?"0 2px 8px #2563eb44":"0 1px 3px #0001" }}>{v}</button>
           ))}
         </div>
@@ -511,13 +556,15 @@ function PublicView({ teams, matches, knockout, onAdminClick }) {
             </div>
           </div>
         )}
+        <SponsorSection sponsors={sponsors} />
+        <Footer />
       </div>
     </div>
   );
 }
 
 // ─── ADMIN VIEW ───────────────────────────────────────────────────
-function AdminView({ teams, setTeams, matches, setMatches, knockout, setKnockout, onSave, onLogout }) {
+function AdminView({ teams, setTeams, matches, setMatches, knockout, setKnockout, sponsors, setSponsors, onSave, onLogout }) {
   const [tab, setTab] = useState("group");
   const [openScorer, setOpenScorer] = useState(null); // matchId yang sedang dibuka
   const [newScorer, setNewScorer] = useState({ name: "", side: "home", goals: 1 });
@@ -591,7 +638,7 @@ function AdminView({ teams, setTeams, matches, setMatches, knockout, setKnockout
         </div>
 
         <div style={{ display:"flex", gap:8, marginBottom:16, flexWrap:"wrap" }}>
-          {[["group","📋 Grup & Jadwal"],["standings","📊 Klasemen"],["topscorer","⚽ Top Skor"],["bracket","🏆 Bagan"],["advance","Tim Lolos"]].map(([k,v])=>(
+          {[["group","📋 Grup & Jadwal"],["standings","📊 Klasemen"],["topscorer","⚽ Top Skor"],["bracket","🏆 Bagan"],["advance","Tim Lolos"],["sponsor","✨ Sponsor"]].map(([k,v])=>(
             <button key={k} onClick={()=>setTab(k)} style={{ padding:"8px 18px", borderRadius:8, border:"none", cursor:"pointer", fontWeight:600, fontSize:13, background:tab===k?"#2563eb":"#fff", color:tab===k?"#fff":"#64748b", boxShadow:tab===k?"0 2px 8px #2563eb44":"0 1px 3px #0001" }}>{v}</button>
           ))}
         </div>
@@ -771,6 +818,67 @@ function AdminView({ teams, setTeams, matches, setMatches, knockout, setKnockout
             </div>
           </div>
         )}
+
+        {tab==="sponsor" && (
+          <SponsorAdmin sponsors={sponsors} setSponsors={setSponsors} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── SPONSOR ADMIN ────────────────────────────────────────────────
+function SponsorAdmin({ sponsors, setSponsors }) {
+  const [newName, setNewName] = useState("");
+  const [newLogo, setNewLogo] = useState("");
+
+  const add = () => {
+    if (!newName.trim()) return;
+    setSponsors(prev => [...prev, { name: newName.trim(), logoUrl: newLogo.trim() }]);
+    setNewName(""); setNewLogo("");
+  };
+
+  const remove = (i) => setSponsors(prev => prev.filter((_,idx) => idx !== i));
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+      <div style={{ background:"#fff", borderRadius:12, overflow:"hidden", boxShadow:"0 1px 6px #0001" }}>
+        <div style={{ background:"linear-gradient(135deg,#1e3a5f,#2563eb)", color:"#fff", padding:"12px 20px", fontWeight:700, fontSize:14 }}>✨ Kelola Sponsor</div>
+        <div style={{ padding:16, display:"flex", flexDirection:"column", gap:10 }}>
+          {sponsors.length === 0 && (
+            <div style={{ textAlign:"center", color:"#94a3b8", padding:20, fontSize:13 }}>Belum ada sponsor. Tambahkan di bawah.</div>
+          )}
+          {sponsors.map((s, i) => (
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"10px 14px", borderRadius:10, border:"1px solid #e2e8f0", background:"#f8fafc" }}>
+              {s.logoUrl
+                ? <img src={s.logoUrl} alt={s.name} style={{ height:40, width:40, objectFit:"contain", borderRadius:6 }} />
+                : <div style={{ width:40, height:40, borderRadius:8, background:"linear-gradient(135deg,#2563eb,#1d4ed8)", display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontWeight:800, fontSize:18 }}>{s.name.charAt(0)}</div>
+              }
+              <div style={{ flex:1 }}>
+                <div style={{ fontWeight:700, fontSize:13, color:"#1e293b" }}>{s.name}</div>
+                {s.logoUrl && <div style={{ fontSize:10, color:"#94a3b8", wordBreak:"break-all" }}>{s.logoUrl}</div>}
+              </div>
+              <button onClick={() => remove(i)} style={{ background:"#fee2e2", border:"none", color:"#ef4444", borderRadius:6, padding:"4px 10px", cursor:"pointer", fontWeight:700, fontSize:12 }}>Hapus</button>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div style={{ background:"#fff", borderRadius:12, padding:16, boxShadow:"0 1px 6px #0001" }}>
+        <div style={{ fontWeight:700, fontSize:13, color:"#1e293b", marginBottom:10 }}>+ Tambah Sponsor</div>
+        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+          <input placeholder="Nama sponsor *" value={newName} onChange={e=>setNewName(e.target.value)}
+            style={{ border:"1px solid #e2e8f0", borderRadius:8, padding:"8px 12px", fontSize:13 }} />
+          <input placeholder="URL logo (opsional) — misal: https://i.imgur.com/xxx.png" value={newLogo} onChange={e=>setNewLogo(e.target.value)}
+            onKeyDown={e=>e.key==="Enter"&&add()}
+            style={{ border:"1px solid #e2e8f0", borderRadius:8, padding:"8px 12px", fontSize:13 }} />
+          <button onClick={add} style={{ background:"linear-gradient(135deg,#2563eb,#1d4ed8)", color:"#fff", border:"none", borderRadius:8, padding:"10px", fontWeight:700, fontSize:13, cursor:"pointer" }}>
+            + Tambah Sponsor
+          </button>
+        </div>
+        <div style={{ marginTop:10, fontSize:11, color:"#94a3b8", lineHeight:1.6 }}>
+          Jika tidak punya URL logo, inisial nama akan ditampilkan otomatis.<br/>
+          Setelah menambah sponsor, klik <b>💾 Simpan</b> agar tersimpan ke semua perangkat.
+        </div>
       </div>
     </div>
   );
@@ -783,6 +891,7 @@ export default function App() {
   const [teams, setTeams] = useState(initialTeams);
   const [matches, setMatches] = useState(initMatches);
   const [knockout, setKnockout] = useState(initKnockout);
+  const [sponsors, setSponsors] = useState(initSponsors);
   const [mode, setMode] = useState("public");
   const [loading, setLoading] = useState(true);
 
@@ -794,6 +903,7 @@ export default function App() {
         if (d.teams) setTeams(d.teams);
         if (d.matches) setMatches(d.matches);
         if (d.knockout) setKnockout(d.knockout);
+        if (d.sponsors) setSponsors(d.sponsors);
       }
       setLoading(false);
     }, () => setLoading(false));
@@ -801,7 +911,7 @@ export default function App() {
   }, []);
 
   const handleSave = async () => {
-    await setDoc(DATA_DOC, { teams, matches, knockout });
+    await setDoc(DATA_DOC, { teams, matches, knockout, sponsors });
   };
 
   if (loading) return (
@@ -814,6 +924,6 @@ export default function App() {
   );
 
   if (mode === "login") return <LoginScreen onLogin={()=>setMode("admin")} onBack={()=>setMode("public")} />;
-  if (mode === "admin") return <AdminView teams={teams} setTeams={setTeams} matches={matches} setMatches={setMatches} knockout={knockout} setKnockout={setKnockout} onSave={handleSave} onLogout={()=>setMode("public")} />;
-  return <PublicView teams={teams} matches={matches} knockout={knockout} onAdminClick={()=>setMode("login")} />;
+  if (mode === "admin") return <AdminView teams={teams} setTeams={setTeams} matches={matches} setMatches={setMatches} knockout={knockout} setKnockout={setKnockout} sponsors={sponsors} setSponsors={setSponsors} onSave={handleSave} onLogout={()=>setMode("public")} />;
+  return <PublicView teams={teams} matches={matches} knockout={knockout} sponsors={sponsors} onAdminClick={()=>setMode("login")} />;
 }
