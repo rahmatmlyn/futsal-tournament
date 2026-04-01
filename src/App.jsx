@@ -64,8 +64,8 @@ function Footer() {
   return (
     <div style={{ marginTop:24, padding:"20px 0 8px", textAlign:"center" }}>
       <div style={{ fontSize:13, color:"#64748b", lineHeight:2 }}>
-        <span style={{ fontWeight:700, color:"#1e293b" }}>⚽ Turnamen Futsal For Unity</span><br/>
-        <span>Kelurahan Kalisari 2026</span><br/>
+        <span style={{ fontWeight:700, color:"#1e293b" }}>Turnamen Futsal For Unity Karang Taruna Kelurahan Kalisari</span><br/>
+        <span>Karang Taruna Kelurahan Kalisari 2026</span><br/>
         <span style={{ fontSize:11 }}>Dibuat oleh <b>Rahmat Mulyana</b> — Panitia FFU 2026</span>
       </div>
       <div style={{ marginTop:8, fontSize:10, color:"#cbd5e1" }}>
