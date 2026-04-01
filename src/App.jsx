@@ -14,9 +14,12 @@ function generateMatches(teams, group) {
   const matches = [];
   for (let i = 0; i < teams.length; i++)
     for (let j = i + 1; j < teams.length; j++)
-      matches.push({ id: `${group}-${i}-${j}`, home: teams[i], away: teams[j], homeScore: "", awayScore: "", wo: "none", yellowHome: 0, yellowAway: 0, redHome: 0, redAway: 0, scorers: [] });
+      matches.push({ id: `${group}-${i}-${j}`, home: teams[i], away: teams[j], homeScore: "", awayScore: "", wo: "none", yellowHome: 0, yellowAway: 0, redHome: 0, redAway: 0, scorers: [], date: "", time: "" });
   return matches;
 }
+
+// roster: { [teamName]: { players: [{name,number,pos}], officials: [{name,role}] } }
+const initRoster = {};
 
 const initMatches = {
   A: generateMatches(initialTeams.A, "A"),
@@ -423,8 +426,197 @@ function TopScorers({ allMatches }) {
   );
 }
 
+// ─── ROSTER VIEW (publik) ────────────────────────────────────────
+function RosterView({ teams, roster }) {
+  const allTeams = [...teams.A, ...teams.B, ...teams.C];
+  const [selected, setSelected] = useState(allTeams[0] || "");
+  const data = roster[selected] || { players: [], officials: [] };
+
+  const posColor = { GK:"#7c3aed", FP:"#2563eb", CF:"#10b981" };
+  const posLabel = { GK:"Kiper", FP:"Pemain Lapangan", CF:"Pivot" };
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+      {/* Pilih Tim */}
+      <div style={{ background:"#fff", borderRadius:12, padding:"14px 16px", boxShadow:"0 1px 6px #0001" }}>
+        <div style={{ fontSize:12, fontWeight:600, color:"#64748b", marginBottom:8 }}>Pilih Tim:</div>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+          {["A","B","C"].map(grp => teams[grp].map(t => (
+            <button key={t} onClick={()=>setSelected(t)}
+              style={{ padding:"6px 14px", borderRadius:8, border:`2px solid ${selected===t?COLORS[grp]:"#e2e8f0"}`, background:selected===t?COLORS[grp]:"#fff", color:selected===t?"#fff":"#1e293b", fontWeight:600, fontSize:12, cursor:"pointer" }}>
+              {t}
+            </button>
+          )))}
+        </div>
+      </div>
+
+      {/* Data tim */}
+      <div style={{ background:"#fff", borderRadius:12, overflow:"hidden", boxShadow:"0 1px 6px #0001" }}>
+        <div style={{ background:"#1e3a5f", color:"#fff", padding:"12px 20px", fontWeight:700, fontSize:14 }}>
+          👥 {selected}
+        </div>
+
+        {/* Official */}
+        <div style={{ padding:"12px 16px 0" }}>
+          <div style={{ fontSize:12, fontWeight:700, color:"#64748b", marginBottom:6, textTransform:"uppercase", letterSpacing:1 }}>Official</div>
+          {data.officials.length === 0
+            ? <div style={{ fontSize:12, color:"#cbd5e1", paddingBottom:12 }}>Belum ada data official</div>
+            : <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom:12 }}>
+                {data.officials.map((o,i) => (
+                  <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 12px", borderRadius:8, background:"#f1f5f9", border:"1px solid #e2e8f0" }}>
+                    <div style={{ width:28, height:28, borderRadius:"50%", background:"#1e3a5f", color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontSize:11, fontWeight:800 }}>
+                      {o.name.charAt(0)}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight:700, fontSize:12, color:"#1e293b" }}>{o.name}</div>
+                      <div style={{ fontSize:10, color:"#64748b" }}>{o.role}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+          }
+        </div>
+
+        {/* Pemain */}
+        <div style={{ padding:"0 16px 16px" }}>
+          <div style={{ fontSize:12, fontWeight:700, color:"#64748b", marginBottom:6, textTransform:"uppercase", letterSpacing:1 }}>Pemain</div>
+          {data.players.length === 0
+            ? <div style={{ fontSize:12, color:"#cbd5e1" }}>Belum ada data pemain</div>
+            : <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
+                <thead>
+                  <tr style={{ background:"#f8fafc" }}>
+                    {["No","Nama","Posisi"].map((h,i)=>(
+                      <th key={i} style={{ padding:"7px 8px", textAlign:i===0?"center":"left", color:"#64748b", fontWeight:600 }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.players.sort((a,b)=>(parseInt(a.number)||99)-(parseInt(b.number)||99)).map((p,i)=>(
+                    <tr key={i} style={{ borderBottom:"1px solid #f1f5f9" }}>
+                      <td style={{ padding:"8px", textAlign:"center", fontWeight:700, color:"#2563eb", width:36 }}>{p.number||"-"}</td>
+                      <td style={{ padding:"8px", fontWeight:600, color:"#1e293b" }}>{p.name}</td>
+                      <td style={{ padding:"8px" }}>
+                        <span style={{ fontSize:10, background:(posColor[p.pos]||"#64748b")+"22", color:posColor[p.pos]||"#64748b", borderRadius:4, padding:"2px 6px", fontWeight:700 }}>
+                          {posLabel[p.pos]||p.pos||"-"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+          }
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── ROSTER ADMIN ────────────────────────────────────────────────
+function RosterAdmin({ teams, roster, setRoster }) {
+  const allTeams = [...teams.A, ...teams.B, ...teams.C];
+  const [selected, setSelected] = useState(allTeams[0] || "");
+  const [newPlayer, setNewPlayer] = useState({ name:"", number:"", pos:"FP" });
+  const [newOfficial, setNewOfficial] = useState({ name:"", role:"" });
+
+  const data = roster[selected] || { players: [], officials: [] };
+  const update = (patch) => setRoster(prev => ({ ...prev, [selected]: { ...data, ...patch } }));
+
+  const addPlayer = () => {
+    if (!newPlayer.name.trim()) return;
+    update({ players: [...data.players, { ...newPlayer, name: newPlayer.name.trim() }] });
+    setNewPlayer({ name:"", number:"", pos:"FP" });
+  };
+  const removePlayer = (i) => update({ players: data.players.filter((_,idx)=>idx!==i) });
+
+  const addOfficial = () => {
+    if (!newOfficial.name.trim()) return;
+    update({ officials: [...data.officials, { ...newOfficial, name: newOfficial.name.trim() }] });
+    setNewOfficial({ name:"", role:"" });
+  };
+  const removeOfficial = (i) => update({ officials: data.officials.filter((_,idx)=>idx!==i) });
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+      {/* Pilih Tim */}
+      <div style={{ background:"#fff", borderRadius:12, padding:"14px 16px", boxShadow:"0 1px 6px #0001" }}>
+        <div style={{ fontSize:12, fontWeight:600, color:"#64748b", marginBottom:8 }}>Pilih Tim:</div>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+          {["A","B","C"].map(grp => teams[grp].map(t => (
+            <button key={t} onClick={()=>setSelected(t)}
+              style={{ padding:"6px 14px", borderRadius:8, border:`2px solid ${selected===t?COLORS[grp]:"#e2e8f0"}`, background:selected===t?COLORS[grp]:"#fff", color:selected===t?"#fff":"#1e293b", fontWeight:600, fontSize:12, cursor:"pointer" }}>
+              {t}
+            </button>
+          )))}
+        </div>
+      </div>
+
+      {/* Form Official */}
+      <div style={{ background:"#fff", borderRadius:12, overflow:"hidden", boxShadow:"0 1px 6px #0001" }}>
+        <div style={{ background:"#1e3a5f", color:"#fff", padding:"10px 16px", fontWeight:700, fontSize:13 }}>👔 Official — {selected}</div>
+        <div style={{ padding:12, display:"flex", flexDirection:"column", gap:8 }}>
+          {data.officials.map((o,i) => (
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 10px", borderRadius:8, background:"#f8fafc", border:"1px solid #e2e8f0" }}>
+              <span style={{ flex:1, fontWeight:600, fontSize:12 }}>{o.name}</span>
+              <span style={{ fontSize:11, color:"#64748b" }}>{o.role}</span>
+              <button onClick={()=>removeOfficial(i)} style={{ background:"#fee2e2", border:"none", color:"#ef4444", borderRadius:5, padding:"2px 8px", cursor:"pointer", fontSize:11, fontWeight:700 }}>×</button>
+            </div>
+          ))}
+          <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+            <input placeholder="Nama official" value={newOfficial.name} onChange={e=>setNewOfficial(p=>({...p,name:e.target.value}))}
+              style={{ flex:2, border:"1px solid #e2e8f0", borderRadius:6, padding:"6px 10px", fontSize:12, minWidth:120 }} />
+            <input placeholder="Jabatan (misal: Pelatih)" value={newOfficial.role} onChange={e=>setNewOfficial(p=>({...p,role:e.target.value}))}
+              onKeyDown={e=>e.key==="Enter"&&addOfficial()}
+              style={{ flex:2, border:"1px solid #e2e8f0", borderRadius:6, padding:"6px 10px", fontSize:12, minWidth:120 }} />
+            <button onClick={addOfficial} style={{ background:"#1e3a5f", color:"#fff", border:"none", borderRadius:6, padding:"6px 14px", fontSize:12, fontWeight:700, cursor:"pointer" }}>+ Tambah</button>
+          </div>
+        </div>
+      </div>
+
+      {/* Form Pemain */}
+      <div style={{ background:"#fff", borderRadius:12, overflow:"hidden", boxShadow:"0 1px 6px #0001" }}>
+        <div style={{ background:"#2563eb", color:"#fff", padding:"10px 16px", fontWeight:700, fontSize:13 }}>⚽ Pemain — {selected}</div>
+        <div style={{ padding:12, display:"flex", flexDirection:"column", gap:6 }}>
+          {data.players.length > 0 && (
+            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12, marginBottom:6 }}>
+              <thead><tr style={{ background:"#f8fafc" }}>
+                {["No","Nama","Pos",""].map((h,i)=><th key={i} style={{ padding:"6px 8px", textAlign:i===0?"center":"left", color:"#64748b", fontWeight:600 }}>{h}</th>)}
+              </tr></thead>
+              <tbody>
+                {data.players.sort((a,b)=>(parseInt(a.number)||99)-(parseInt(b.number)||99)).map((p,i)=>(
+                  <tr key={i} style={{ borderBottom:"1px solid #f1f5f9" }}>
+                    <td style={{ padding:"6px 8px", textAlign:"center", fontWeight:700, color:"#2563eb", width:36 }}>{p.number||"-"}</td>
+                    <td style={{ padding:"6px 8px", fontWeight:600 }}>{p.name}</td>
+                    <td style={{ padding:"6px 8px", fontSize:11, color:"#64748b" }}>{p.pos||"-"}</td>
+                    <td style={{ padding:"6px 8px" }}>
+                      <button onClick={()=>removePlayer(data.players.indexOf(p))} style={{ background:"#fee2e2", border:"none", color:"#ef4444", borderRadius:5, padding:"2px 8px", cursor:"pointer", fontSize:11, fontWeight:700 }}>×</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+            <input placeholder="Nama pemain" value={newPlayer.name} onChange={e=>setNewPlayer(p=>({...p,name:e.target.value}))}
+              style={{ flex:3, border:"1px solid #e2e8f0", borderRadius:6, padding:"6px 10px", fontSize:12, minWidth:120 }} />
+            <input type="number" placeholder="No" value={newPlayer.number} onChange={e=>setNewPlayer(p=>({...p,number:e.target.value}))}
+              style={{ width:56, border:"1px solid #e2e8f0", borderRadius:6, padding:"6px 8px", fontSize:12, textAlign:"center" }} />
+            <select value={newPlayer.pos} onChange={e=>setNewPlayer(p=>({...p,pos:e.target.value}))}
+              style={{ border:"1px solid #e2e8f0", borderRadius:6, padding:"6px 8px", fontSize:12 }}>
+              <option value="GK">Kiper (GK)</option>
+              <option value="FP">Pemain (FP)</option>
+              <option value="CF">Pivot (CF)</option>
+            </select>
+            <button onClick={addPlayer} onKeyDown={e=>e.key==="Enter"&&addPlayer()}
+              style={{ background:"#2563eb", color:"#fff", border:"none", borderRadius:6, padding:"6px 14px", fontSize:12, fontWeight:700, cursor:"pointer" }}>+ Tambah</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── PUBLIC VIEW ─────────────────────────────────────────────────
-function PublicView({ teams, matches, knockout, sponsors, onAdminClick }) {
+function PublicView({ teams, matches, knockout, sponsors, roster, onAdminClick }) {
   const [tab, setTab] = useState("standings");
   const statsA=calcStats(teams.A,matches.A);
   const statsB=calcStats(teams.B,matches.B);
@@ -455,7 +647,7 @@ function PublicView({ teams, matches, knockout, sponsors, onAdminClick }) {
 
         {/* Tabs */}
         <div style={{ display:"flex", gap:8, marginBottom:16, flexWrap:"wrap" }}>
-          {[["standings","📊 Klasemen"],["schedule","📋 Jadwal & Hasil"],["topscorer","⚽ Top Skor"],["advance","Tim Lolos"],["bracket","🏆 Bagan"]].map(([k,v])=>(
+          {[["standings","📊 Klasemen"],["schedule","📋 Jadwal & Hasil"],["topscorer","⚽ Top Skor"],["bracket","🏆 Bagan"],["roster","👥 Tim & Pemain"],["advance","Tim Lolos"]].map(([k,v])=>(
             <button key={k} onClick={()=>setTab(k)} style={{ padding:"8px 18px", borderRadius:8, border:"none", cursor:"pointer", fontWeight:600, fontSize:13, background:tab===k?"#2563eb":"#fff", color:tab===k?"#fff":"#64748b", boxShadow:tab===k?"0 2px 8px #2563eb44":"0 1px 3px #0001" }}>{v}</button>
           ))}
         </div>
@@ -487,19 +679,31 @@ function PublicView({ teams, matches, knockout, sponsors, onAdminClick }) {
                   {matches[grp].map((m,i)=>{
                     const res=matchResult(m);
                     return(
-                      <div key={m.id} style={{ display:"flex", alignItems:"center", padding:"10px 0", borderBottom:i<matches[grp].length-1?"1px solid #f1f5f9":"none" }}>
-                        <div style={{ flex:1, textAlign:"right", fontWeight:600, fontSize:13, color:"#1e293b" }}>{m.home}</div>
-                        <div style={{ width:90, textAlign:"center", margin:"0 12px" }}>
-                          {res ? (
-                            <div style={{ background:res.color==="#7c3aed"?"#f5f3ff":"#f1f5f9", borderRadius:8, padding:"4px 10px" }}>
-                              <div style={{ fontWeight:700, color:res.color, fontSize:14 }}>{res.score}</div>
-                              {res.label && <div style={{ fontSize:10, color:res.color }}>{res.label}</div>}
-                            </div>
-                          ) : (
-                            <div style={{ background:"#f8fafc", borderRadius:8, padding:"4px 10px", color:"#cbd5e1", fontSize:12, fontWeight:600 }}>VS</div>
-                          )}
+                      <div key={m.id} style={{ padding:"12px 0", borderBottom:i<matches[grp].length-1?"1px solid #f1f5f9":"none" }}>
+                        {/* Tanggal & jam */}
+                        {(m.date||m.time) && (
+                          <div style={{ textAlign:"center", marginBottom:6 }}>
+                            <span style={{ fontSize:11, background:"#f1f5f9", borderRadius:6, padding:"2px 10px", color:"#64748b", fontWeight:600 }}>
+                              {m.date && new Date(m.date).toLocaleDateString("id-ID",{weekday:"short",day:"numeric",month:"short",year:"numeric"})}
+                              {m.date && m.time && " · "}
+                              {m.time && m.time+" WIB"}
+                            </span>
+                          </div>
+                        )}
+                        <div style={{ display:"flex", alignItems:"center" }}>
+                          <div style={{ flex:1, textAlign:"right", fontWeight:600, fontSize:13, color:"#1e293b" }}>{m.home}</div>
+                          <div style={{ width:90, textAlign:"center", margin:"0 12px" }}>
+                            {res ? (
+                              <div style={{ background:res.color==="#7c3aed"?"#f5f3ff":"#f1f5f9", borderRadius:8, padding:"4px 10px" }}>
+                                <div style={{ fontWeight:700, color:res.color, fontSize:14 }}>{res.score}</div>
+                                {res.label && <div style={{ fontSize:10, color:res.color }}>{res.label}</div>}
+                              </div>
+                            ) : (
+                              <div style={{ background:"#f8fafc", borderRadius:8, padding:"4px 10px", color:"#cbd5e1", fontSize:12, fontWeight:600 }}>VS</div>
+                            )}
+                          </div>
+                          <div style={{ flex:1, textAlign:"left", fontWeight:600, fontSize:13, color:"#1e293b" }}>{m.away}</div>
                         </div>
-                        <div style={{ flex:1, textAlign:"left", fontWeight:600, fontSize:13, color:"#1e293b" }}>{m.away}</div>
                       </div>
                     );
                   })}
@@ -511,6 +715,10 @@ function PublicView({ teams, matches, knockout, sponsors, onAdminClick }) {
 
         {tab==="topscorer" && (
           <TopScorers allMatches={matches} />
+        )}
+
+        {tab==="roster" && (
+          <RosterView teams={teams} roster={roster} />
         )}
 
         {tab==="bracket" && (
@@ -564,7 +772,7 @@ function PublicView({ teams, matches, knockout, sponsors, onAdminClick }) {
 }
 
 // ─── ADMIN VIEW ───────────────────────────────────────────────────
-function AdminView({ teams, setTeams, matches, setMatches, knockout, setKnockout, sponsors, setSponsors, onSave, onLogout }) {
+function AdminView({ teams, setTeams, matches, setMatches, knockout, setKnockout, sponsors, setSponsors, roster, setRoster, onSave, onLogout }) {
   const [tab, setTab] = useState("group");
   const [openScorer, setOpenScorer] = useState(null); // matchId yang sedang dibuka
   const [newScorer, setNewScorer] = useState({ name: "", side: "home", goals: 1 });
@@ -638,7 +846,7 @@ function AdminView({ teams, setTeams, matches, setMatches, knockout, setKnockout
         </div>
 
         <div style={{ display:"flex", gap:8, marginBottom:16, flexWrap:"wrap" }}>
-          {[["group","📋 Grup & Jadwal"],["standings","📊 Klasemen"],["topscorer","⚽ Top Skor"],["bracket","🏆 Bagan"],["advance","Tim Lolos"],["sponsor","✨ Sponsor"]].map(([k,v])=>(
+          {[["group","📋 Grup & Jadwal"],["standings","📊 Klasemen"],["topscorer","⚽ Top Skor"],["bracket","🏆 Bagan"],["roster","👥 Tim & Pemain"],["advance","Tim Lolos"],["sponsor","✨ Sponsor"]].map(([k,v])=>(
             <button key={k} onClick={()=>setTab(k)} style={{ padding:"8px 18px", borderRadius:8, border:"none", cursor:"pointer", fontWeight:600, fontSize:13, background:tab===k?"#2563eb":"#fff", color:tab===k?"#fff":"#64748b", boxShadow:tab===k?"0 2px 8px #2563eb44":"0 1px 3px #0001" }}>{v}</button>
           ))}
         </div>
@@ -664,7 +872,7 @@ function AdminView({ teams, setTeams, matches, setMatches, knockout, setKnockout
                   <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
                     <thead>
                       <tr style={{ background:"#f1f5f9" }}>
-                        {["Home","Skor","Away","WO","🟡H","🔴H","🟡A","🔴A","⚽"].map((h,i)=>(
+                        {["Home","Skor","Away","WO","📅","⏰","🟡H","🔴H","🟡A","🔴A","⚽"].map((h,i)=>(
                           <th key={i} style={{ padding:"6px 4px", textAlign:i<3?"left":"center", color:"#64748b" }}>{h}</th>
                         ))}
                       </tr>
@@ -696,6 +904,14 @@ function AdminView({ teams, setTeams, matches, setMatches, knockout, setKnockout
                                 <option value="away_wo">Away WO</option>
                               </select>
                             </td>
+                            <td style={{ padding:"4px 2px", textAlign:"center" }}>
+                              <input type="date" value={m.date||""} onChange={e=>updateMatch(grp,m.id,"date",e.target.value)}
+                                style={{ border:"1px solid #e2e8f0", borderRadius:4, padding:"2px 3px", fontSize:10, width:110 }} />
+                            </td>
+                            <td style={{ padding:"4px 2px", textAlign:"center" }}>
+                              <input type="time" value={m.time||""} onChange={e=>updateMatch(grp,m.id,"time",e.target.value)}
+                                style={{ border:"1px solid #e2e8f0", borderRadius:4, padding:"2px 3px", fontSize:10, width:72 }} />
+                            </td>
                             {["yellowHome","redHome","yellowAway","redAway"].map(f=>(
                               <td key={f} style={{ padding:"4px 2px", textAlign:"center" }}>
                                 <input type="number" min="0" value={m[f]} onChange={e=>updateMatch(grp,m.id,f,e.target.value)}
@@ -712,7 +928,7 @@ function AdminView({ teams, setTeams, matches, setMatches, knockout, setKnockout
                           </tr>
                           {openScorer===m.id && (
                             <tr key={`${m.id}-scorer`} style={{ borderBottom:"1px solid #f1f5f9" }}>
-                              <td colSpan={9} style={{ padding:"10px 12px", background:"#fffbeb" }}>
+                              <td colSpan={11} style={{ padding:"10px 12px", background:"#fffbeb" }}>
                                 <div style={{ fontSize:11, fontWeight:700, color:"#92400e", marginBottom:8 }}>
                                   ⚽ Pencetak Gol: <span style={{ color:"#64748b", fontWeight:400 }}>{m.home}</span> vs <span style={{ color:"#64748b", fontWeight:400 }}>{m.away}</span>
                                 </div>
@@ -730,26 +946,47 @@ function AdminView({ teams, setTeams, matches, setMatches, knockout, setKnockout
                                   </div>
                                 )}
                                 {/* Form tambah scorer */}
-                                <div style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
-                                  <input
-                                    placeholder="Nama pemain"
-                                    value={newScorer.name}
-                                    onChange={e=>setNewScorer(p=>({...p,name:e.target.value}))}
-                                    onKeyDown={e=>e.key==="Enter"&&addScorer(grp,m.id)}
-                                    style={{ border:"1px solid #e2e8f0", borderRadius:6, padding:"4px 8px", fontSize:11, width:130 }} />
-                                  <select value={newScorer.side} onChange={e=>setNewScorer(p=>({...p,side:e.target.value}))}
-                                    style={{ border:"1px solid #e2e8f0", borderRadius:6, padding:"4px 6px", fontSize:11 }}>
-                                    <option value="home">{m.home}</option>
-                                    <option value="away">{m.away}</option>
-                                  </select>
-                                  <input type="number" min="1" value={newScorer.goals}
-                                    onChange={e=>setNewScorer(p=>({...p,goals:e.target.value}))}
-                                    style={{ border:"1px solid #e2e8f0", borderRadius:6, padding:"4px 6px", fontSize:11, width:44, textAlign:"center" }} />
-                                  <button onClick={()=>addScorer(grp,m.id)}
-                                    style={{ background:"#f59e0b", color:"#fff", border:"none", borderRadius:6, padding:"4px 12px", fontSize:11, fontWeight:700, cursor:"pointer" }}>
-                                    + Tambah
-                                  </button>
-                                </div>
+                                {(()=>{
+                                  const sidePlayers = (roster[newScorer.side==="home"?m.home:m.away]?.players||[]);
+                                  const hasRoster = sidePlayers.length > 0;
+                                  return (
+                                    <div style={{ display:"flex", gap:6, alignItems:"center", flexWrap:"wrap" }}>
+                                      <select value={newScorer.side} onChange={e=>setNewScorer(p=>({...p,side:e.target.value,name:""}))}
+                                        style={{ border:"1px solid #e2e8f0", borderRadius:6, padding:"4px 6px", fontSize:11 }}>
+                                        <option value="home">{m.home}</option>
+                                        <option value="away">{m.away}</option>
+                                      </select>
+                                      {hasRoster ? (
+                                        <select value={newScorer.name} onChange={e=>setNewScorer(p=>({...p,name:e.target.value}))}
+                                          style={{ border:"1px solid #e2e8f0", borderRadius:6, padding:"4px 8px", fontSize:11, minWidth:140 }}>
+                                          <option value="">— Pilih pemain —</option>
+                                          {sidePlayers.sort((a,b)=>(parseInt(a.number)||99)-(parseInt(b.number)||99)).map((p,pi)=>(
+                                            <option key={pi} value={p.name}>
+                                              {p.number ? `#${p.number} ` : ""}{p.name}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      ) : (
+                                        <input
+                                          placeholder="Nama pemain"
+                                          value={newScorer.name}
+                                          onChange={e=>setNewScorer(p=>({...p,name:e.target.value}))}
+                                          onKeyDown={e=>e.key==="Enter"&&addScorer(grp,m.id)}
+                                          style={{ border:"1px solid #e2e8f0", borderRadius:6, padding:"4px 8px", fontSize:11, width:130 }} />
+                                      )}
+                                      <input type="number" min="1" value={newScorer.goals}
+                                        onChange={e=>setNewScorer(p=>({...p,goals:e.target.value}))}
+                                        style={{ border:"1px solid #e2e8f0", borderRadius:6, padding:"4px 6px", fontSize:11, width:44, textAlign:"center" }} />
+                                      <button onClick={()=>addScorer(grp,m.id)}
+                                        style={{ background:"#f59e0b", color:"#fff", border:"none", borderRadius:6, padding:"4px 12px", fontSize:11, fontWeight:700, cursor:"pointer" }}>
+                                        + Tambah
+                                      </button>
+                                      {!hasRoster && (
+                                        <span style={{ fontSize:10, color:"#94a3b8" }}>*Isi roster tim di tab "👥 Tim & Pemain" untuk pilih dari daftar</span>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
                               </td>
                             </tr>
                           )}
@@ -817,6 +1054,10 @@ function AdminView({ teams, setTeams, matches, setMatches, knockout, setKnockout
               </div>
             </div>
           </div>
+        )}
+
+        {tab==="roster" && (
+          <RosterAdmin teams={teams} roster={roster} setRoster={setRoster} />
         )}
 
         {tab==="sponsor" && (
@@ -892,6 +1133,7 @@ export default function App() {
   const [matches, setMatches] = useState(initMatches);
   const [knockout, setKnockout] = useState(initKnockout);
   const [sponsors, setSponsors] = useState(initSponsors);
+  const [roster, setRoster] = useState(initRoster);
   const [mode, setMode] = useState("public");
   const [loading, setLoading] = useState(true);
 
@@ -904,6 +1146,7 @@ export default function App() {
         if (d.matches) setMatches(d.matches);
         if (d.knockout) setKnockout(d.knockout);
         if (d.sponsors) setSponsors(d.sponsors);
+        if (d.roster) setRoster(d.roster);
       }
       setLoading(false);
     }, () => setLoading(false));
@@ -911,7 +1154,7 @@ export default function App() {
   }, []);
 
   const handleSave = async () => {
-    await setDoc(DATA_DOC, { teams, matches, knockout, sponsors });
+    await setDoc(DATA_DOC, { teams, matches, knockout, sponsors, roster });
   };
 
   if (loading) return (
@@ -924,6 +1167,6 @@ export default function App() {
   );
 
   if (mode === "login") return <LoginScreen onLogin={()=>setMode("admin")} onBack={()=>setMode("public")} />;
-  if (mode === "admin") return <AdminView teams={teams} setTeams={setTeams} matches={matches} setMatches={setMatches} knockout={knockout} setKnockout={setKnockout} sponsors={sponsors} setSponsors={setSponsors} onSave={handleSave} onLogout={()=>setMode("public")} />;
-  return <PublicView teams={teams} matches={matches} knockout={knockout} sponsors={sponsors} onAdminClick={()=>setMode("login")} />;
+  if (mode === "admin") return <AdminView teams={teams} setTeams={setTeams} matches={matches} setMatches={setMatches} knockout={knockout} setKnockout={setKnockout} sponsors={sponsors} setSponsors={setSponsors} roster={roster} setRoster={setRoster} onSave={handleSave} onLogout={()=>setMode("public")} />;
+  return <PublicView teams={teams} matches={matches} knockout={knockout} sponsors={sponsors} roster={roster} onAdminClick={()=>setMode("login")} />;
 }
