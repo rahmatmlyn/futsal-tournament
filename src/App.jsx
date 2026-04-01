@@ -1,4 +1,6 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { db } from "./firebase";
+import { doc, setDoc, onSnapshot } from "firebase/firestore";
 
 const ADMIN_PASSWORD = "***REMOVED***";
 
@@ -775,22 +777,41 @@ function AdminView({ teams, setTeams, matches, setMatches, knockout, setKnockout
 }
 
 // ─── ROOT ─────────────────────────────────────────────────────────
-function loadLS(key, fallback) {
-  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }
-  catch { return fallback; }
-}
+const DATA_DOC = doc(db, "tournament", "data");
 
 export default function App() {
-  const [teams, setTeams] = useState(() => loadLS("futsal_teams", initialTeams));
-  const [matches, setMatches] = useState(() => loadLS("futsal_matches", initMatches));
-  const [knockout, setKnockout] = useState(() => loadLS("futsal_knockout", initKnockout));
-  const [mode, setMode] = useState("public"); // public | login | admin
+  const [teams, setTeams] = useState(initialTeams);
+  const [matches, setMatches] = useState(initMatches);
+  const [knockout, setKnockout] = useState(initKnockout);
+  const [mode, setMode] = useState("public");
+  const [loading, setLoading] = useState(true);
 
-  const handleSave = () => {
-    localStorage.setItem("futsal_teams", JSON.stringify(teams));
-    localStorage.setItem("futsal_matches", JSON.stringify(matches));
-    localStorage.setItem("futsal_knockout", JSON.stringify(knockout));
+  // Sinkron real-time dari Firestore → semua perangkat update otomatis
+  useEffect(() => {
+    const unsub = onSnapshot(DATA_DOC, (snap) => {
+      if (snap.exists()) {
+        const d = snap.data();
+        if (d.teams) setTeams(d.teams);
+        if (d.matches) setMatches(d.matches);
+        if (d.knockout) setKnockout(d.knockout);
+      }
+      setLoading(false);
+    }, () => setLoading(false));
+    return () => unsub();
+  }, []);
+
+  const handleSave = async () => {
+    await setDoc(DATA_DOC, { teams, matches, knockout });
   };
+
+  if (loading) return (
+    <div style={{ minHeight:"100vh", display:"flex", alignItems:"center", justifyContent:"center", fontFamily:"Inter,sans-serif", background:"#f8fafc" }}>
+      <div style={{ textAlign:"center", color:"#64748b" }}>
+        <div style={{ fontSize:36, marginBottom:12 }}>⚽</div>
+        <div style={{ fontWeight:600 }}>Memuat data...</div>
+      </div>
+    </div>
+  );
 
   if (mode === "login") return <LoginScreen onLogin={()=>setMode("admin")} onBack={()=>setMode("public")} />;
   if (mode === "admin") return <AdminView teams={teams} setTeams={setTeams} matches={matches} setMatches={setMatches} knockout={knockout} setKnockout={setKnockout} onSave={handleSave} onLogout={()=>setMode("public")} />;
