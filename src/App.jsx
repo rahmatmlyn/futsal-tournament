@@ -647,7 +647,7 @@ function PublicView({ teams, matches, knockout, sponsors, roster, onAdminClick }
 
         {/* Tabs */}
         <div style={{ display:"flex", gap:8, marginBottom:16, flexWrap:"wrap" }}>
-          {[["standings","📊 Klasemen"],["schedule","📋 Jadwal & Hasil"],["topscorer","⚽ Top Skor"],["bracket","🏆 Bagan"],["roster","👥 Tim & Pemain"],["advance","Tim Lolos"]].map(([k,v])=>(
+          {[["standings","📊 Klasemen"],["schedule","📋 Jadwal & Hasil"],["topscorer","⚽ Top Skor"],["advance","Tim Lolos Semifinal"],["bracket","🏆 Bagan Semifinal"],["roster","👥 Tim & Pemain"]].map(([k,v])=>(
             <button key={k} onClick={()=>setTab(k)} style={{ padding:"8px 18px", borderRadius:8, border:"none", cursor:"pointer", fontWeight:600, fontSize:13, background:tab===k?"#2563eb":"#fff", color:tab===k?"#fff":"#64748b", boxShadow:tab===k?"0 2px 8px #2563eb44":"0 1px 3px #0001" }}>{v}</button>
           ))}
         </div>
