@@ -5,31 +5,72 @@ import { doc, setDoc, onSnapshot } from "firebase/firestore";
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD;
 
 const initialTeams = {
-  A: ["Team A1", "Team A2", "Team A3"],
-  B: ["Team B1", "Team B2", "Team B3"],
-  C: ["Team C1", "Team C2", "Team C3", "Team C4"],
+  A: ["Tim A1", "Tim A2", "Tim A3", "Tim A4"],
+  B: ["Tim B1", "Tim B2", "Tim B3", "Tim B4"],
 };
 
+// Urutan matchday: [homeIdx, awayIdx, note]
+const MATCH_ORDER = [
+  [0, 1, (g, t) => `Pembuka Grup ${g}`],
+  [2, 3, (g, t) => `Jeda untuk ${t[0]} & ${t[1]}`],
+  [0, 2, (g, t) => `Matchday 2 Grup ${g}`],
+  [1, 3, (g, t) => ``],
+  [3, 0, (g, t) => `Matchday 3 (Penentuan)`],
+  [1, 2, (g, t) => ``],
+];
+
 function generateMatches(teams, group) {
-  const matches = [];
-  for (let i = 0; i < teams.length; i++)
-    for (let j = i + 1; j < teams.length; j++)
-      matches.push({ id: `${group}-${i}-${j}`, home: teams[i], away: teams[j], homeScore: "", awayScore: "", wo: "none", yellowHome: 0, yellowAway: 0, redHome: 0, redAway: 0, scorers: [], date: "", time: "" });
-  return matches;
+  return MATCH_ORDER.map(([i, j, noteFn], idx) => ({
+    id: `${group}-${i}-${j}`,
+    home: teams[i], away: teams[j],
+    homeScore: "", awayScore: "", wo: "none",
+    yellowHome: 0, yellowAway: 0, redHome: 0, redAway: 0,
+    scorers: [], date: "", time: "",
+    note: noteFn(group, teams),
+    matchNo: 0, // diset saat initMatches
+  }));
+}
+
+// Rekonstruksi matches dari MATCH_ORDER, pertahankan skor lama by team pair
+function normalizeMatches(fbMatches, teams, group) {
+  const fresh = generateMatches(teams, group);
+  fresh.forEach((nm, i) => {
+    nm.matchNo = i * 2 + (group === "A" ? 1 : 2);
+    const old = (fbMatches || []).find(m =>
+      (m.home === nm.home && m.away === nm.away) ||
+      (m.home === nm.away && m.away === nm.home)
+    );
+    if (!old) return;
+    const rev = old.home === nm.away;
+    nm.homeScore   = rev ? old.awayScore   : old.homeScore;
+    nm.awayScore   = rev ? old.homeScore   : old.awayScore;
+    nm.wo          = old.wo === "home_wo" ? (rev ? "away_wo" : "home_wo")
+                   : old.wo === "away_wo" ? (rev ? "home_wo" : "away_wo")
+                   : "none";
+    nm.yellowHome  = rev ? (old.yellowAway||0) : (old.yellowHome||0);
+    nm.redHome     = rev ? (old.redAway||0)    : (old.redHome||0);
+    nm.yellowAway  = rev ? (old.yellowHome||0) : (old.yellowAway||0);
+    nm.redAway     = rev ? (old.redHome||0)    : (old.redAway||0);
+    nm.scorers     = (old.scorers||[]).map(s => ({ ...s, side: rev ? (s.side==="home"?"away":"home") : s.side }));
+    nm.date        = old.date  || "";
+    nm.time        = old.time  || "";
+  });
+  return fresh;
 }
 
 // roster: { [teamName]: { players: [{name,number,pos}], officials: [{name,role}] } }
 const initRoster = {};
 
-const initMatches = {
-  A: generateMatches(initialTeams.A, "A"),
-  B: generateMatches(initialTeams.B, "B"),
-  C: generateMatches(initialTeams.C, "C"),
-};
+const _mA = generateMatches(initialTeams.A, "A");
+const _mB = generateMatches(initialTeams.B, "B");
+// matchNo interleaved: A→1,3,5,7,9,11 · B→2,4,6,8,10,12
+_mA.forEach((m, i) => m.matchNo = i * 2 + 1);
+_mB.forEach((m, i) => m.matchNo = i * 2 + 2);
+const initMatches = { A: _mA, B: _mB };
 
 const initKnockout = {
-  semi1: { homeScore: "", awayScore: "", wo: "none" }, // Juara A vs Runner Up C
-  semi2: { homeScore: "", awayScore: "", wo: "none" }, // Juara B vs Juara C
+  semi1: { homeScore: "", awayScore: "", wo: "none" }, // Juara A vs Runner Up B
+  semi2: { homeScore: "", awayScore: "", wo: "none" }, // Runner Up A vs Juara B
   final: { homeScore: "", awayScore: "", wo: "none" },
   third: { homeScore: "", awayScore: "", wo: "none" }, // Perebutan juara 3
 };
@@ -162,7 +203,7 @@ function calcTopScorers(allMatches) {
   return Object.values(map).filter(s => s.goals > 0).sort((a, b) => b.goals - a.goals);
 }
 
-const COLORS={A:"#3b82f6",B:"#10b981",C:"#f59e0b"};
+const COLORS={A:"#3b82f6",B:"#10b981"};
 
 // ─── KNOCKOUT HELPERS ────────────────────────────────────────────
 function getKnockoutWinner(home, away, match) {
@@ -234,9 +275,9 @@ function MatchCard({ label, home, away, match, isAdmin, onUpdate }) {
 // ─── BRACKET BAGAN ───────────────────────────────────────────────
 function Bracket({ semifinalists, knockout, onUpdate, isAdmin }) {
   const s1h = semifinalists[0]?.team; // Juara A
-  const s1a = semifinalists[3]?.team; // Runner Up C
-  const s2h = semifinalists[1]?.team; // Juara B
-  const s2a = semifinalists[2]?.team; // Juara C
+  const s1a = semifinalists[3]?.team; // Runner Up B
+  const s2h = semifinalists[1]?.team; // Runner Up A
+  const s2a = semifinalists[2]?.team; // Juara B
 
   const w1 = getKnockoutWinner(s1h, s1a, knockout.semi1);
   const w2 = getKnockoutWinner(s2h, s2a, knockout.semi2);
@@ -260,12 +301,12 @@ function Bracket({ semifinalists, knockout, onUpdate, isAdmin }) {
       <div style={{ display:"flex", gap:12, flexWrap:"wrap" }}>
         <div style={{ flex:"1 1 220px" }}>
           <div style={{ fontSize:11, color:"#94a3b8", marginBottom:4, textAlign:"center" }}>Semi 1</div>
-          <MatchCard label={`${s1h||"Juara A"} vs ${s1a||"Runner Up C"}`} home={s1h} away={s1a}
+          <MatchCard label={`${s1h||"Juara A"} vs ${s1a||"Runner Up B"}`} home={s1h} away={s1a}
             match={knockout.semi1} isAdmin={isAdmin} onUpdate={v=>onUpdate("semi1",v)} />
         </div>
         <div style={{ flex:"1 1 220px" }}>
           <div style={{ fontSize:11, color:"#94a3b8", marginBottom:4, textAlign:"center" }}>Semi 2</div>
-          <MatchCard label={`${s2h||"Juara B"} vs ${s2a||"Juara C"}`} home={s2h} away={s2a}
+          <MatchCard label={`${s2h||"Runner Up A"} vs ${s2a||"Juara B"}`} home={s2h} away={s2a}
             match={knockout.semi2} isAdmin={isAdmin} onUpdate={v=>onUpdate("semi2",v)} />
         </div>
       </div>
@@ -311,7 +352,7 @@ function Bracket({ semifinalists, knockout, onUpdate, isAdmin }) {
     </div>
   );
 }
-const BG={A:"#eff6ff",B:"#ecfdf5",C:"#fffbeb"};
+const BG={A:"#eff6ff",B:"#ecfdf5"};
 
 // ─── LOGIN SCREEN ───────────────────────────────────────────────
 function LoginScreen({ onLogin, onBack }) {
@@ -359,8 +400,8 @@ function StandingsTable({ grp, stats, isAdmin }) {
         </thead>
         <tbody>
           {stats.map((s,i)=>{
-            const isAdv=(grp==="C"&&i<2)||(grp!=="C"&&i===0);
-            const isRu=grp==="C"&&i===1;
+            const isAdv=i<2;
+            const isRu=i===1;
             return(
               <tr key={s.team} style={{ borderBottom:"1px solid #f1f5f9", background:isAdv?BG[grp]:"#fff" }}>
                 <td style={{ padding:"8px 6px", fontWeight:700, color:isAdv?COLORS[grp]:"#94a3b8" }}>{i+1}{isAdv?"✓":""}</td>
@@ -428,7 +469,7 @@ function TopScorers({ allMatches }) {
 
 // ─── ROSTER VIEW (publik) ────────────────────────────────────────
 function RosterView({ teams, roster }) {
-  const allTeams = [...teams.A, ...teams.B, ...teams.C];
+  const allTeams = [...teams.A, ...teams.B];
   const [selected, setSelected] = useState(allTeams[0] || "");
   const data = roster[selected] || { players: [], officials: [] };
 
@@ -441,7 +482,7 @@ function RosterView({ teams, roster }) {
       <div style={{ background:"#fff", borderRadius:12, padding:"14px 16px", boxShadow:"0 1px 6px #0001" }}>
         <div style={{ fontSize:12, fontWeight:600, color:"#64748b", marginBottom:8 }}>Pilih Tim:</div>
         <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-          {["A","B","C"].map(grp => teams[grp].map(t => (
+          {["A","B"].map(grp => teams[grp].map(t => (
             <button key={t} onClick={()=>setSelected(t)}
               style={{ padding:"6px 14px", borderRadius:8, border:`2px solid ${selected===t?COLORS[grp]:"#e2e8f0"}`, background:selected===t?COLORS[grp]:"#fff", color:selected===t?"#fff":"#1e293b", fontWeight:600, fontSize:12, cursor:"pointer" }}>
               {t}
@@ -513,7 +554,7 @@ function RosterView({ teams, roster }) {
 
 // ─── ROSTER ADMIN ────────────────────────────────────────────────
 function RosterAdmin({ teams, roster, setRoster }) {
-  const allTeams = [...teams.A, ...teams.B, ...teams.C];
+  const allTeams = [...teams.A, ...teams.B];
   const [selected, setSelected] = useState(allTeams[0] || "");
   const [newPlayer, setNewPlayer] = useState({ name:"", number:"", pos:"FP" });
   const [newOfficial, setNewOfficial] = useState({ name:"", role:"" });
@@ -541,7 +582,7 @@ function RosterAdmin({ teams, roster, setRoster }) {
       <div style={{ background:"#fff", borderRadius:12, padding:"14px 16px", boxShadow:"0 1px 6px #0001" }}>
         <div style={{ fontSize:12, fontWeight:600, color:"#64748b", marginBottom:8 }}>Pilih Tim:</div>
         <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-          {["A","B","C"].map(grp => teams[grp].map(t => (
+          {["A","B"].map(grp => teams[grp].map(t => (
             <button key={t} onClick={()=>setSelected(t)}
               style={{ padding:"6px 14px", borderRadius:8, border:`2px solid ${selected===t?COLORS[grp]:"#e2e8f0"}`, background:selected===t?COLORS[grp]:"#fff", color:selected===t?"#fff":"#1e293b", fontWeight:600, fontSize:12, cursor:"pointer" }}>
               {t}
@@ -620,8 +661,7 @@ function PublicView({ teams, matches, knockout, sponsors, roster, onAdminClick }
   const [tab, setTab] = useState("standings");
   const statsA=calcStats(teams.A,matches.A);
   const statsB=calcStats(teams.B,matches.B);
-  const statsC=calcStats(teams.C,matches.C);
-  const semifinalists=[statsA[0],statsB[0],statsC[0],statsC[1]];
+  const semifinalists=[statsA[0],statsA[1],statsB[0],statsB[1]];
 
   const matchResult = (m) => {
     if (m.wo==="home_wo") return { score:"3 - 0", label:"WO", color:"#7c3aed" };
@@ -637,7 +677,7 @@ function PublicView({ teams, matches, knockout, sponsors, roster, onAdminClick }
         <div style={{ background:"linear-gradient(135deg,#1e3a5f,#2563eb)", borderRadius:16, padding:"20px 24px", marginBottom:20, color:"#fff", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div>
             <h1 style={{ margin:0, fontSize:22, fontWeight:700 }}>Turnamen Futsal For Unity Kelurahan Kalisari 2026</h1>
-            <p style={{ margin:"4px 0 0", opacity:0.8, fontSize:13 }}>10 RW · 3 Grup · Live Standings</p>
+            <p style={{ margin:"4px 0 0", opacity:0.8, fontSize:13 }}>8 Tim · 2 Grup · Live Standings</p>
             <p style={{ margin:"4px 0 0", opacity:0.8, fontSize:13 }}>Created by Rahmat Mulyana Panitia FFU 2026</p>
           </div>
           <button onClick={onAdminClick} style={{ background:"#ffffff22", border:"1px solid #ffffff44", color:"#fff", borderRadius:10, padding:"8px 14px", cursor:"pointer", fontSize:12, fontWeight:600 }}>
@@ -654,11 +694,11 @@ function PublicView({ teams, matches, knockout, sponsors, roster, onAdminClick }
 
         {tab==="standings" && (
           <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
-            {[["A",statsA],["B",statsB],["C",statsC]].map(([grp,stats])=>(
+            {[["A",statsA],["B",statsB]].map(([grp,stats])=>(
               <div key={grp} style={{ background:"#fff", borderRadius:12, overflow:"hidden", boxShadow:"0 1px 6px #0001" }}>
                 <div style={{ background:COLORS[grp], color:"#fff", padding:"12px 20px", fontWeight:700, fontSize:14, display:"flex", justifyContent:"space-between" }}>
                   <span>Grup {grp}</span>
-                  <span style={{ fontSize:11, opacity:0.85 }}>{grp==="C"?"Top 2 lolos":"Juara lolos"}</span>
+                  <span style={{ fontSize:11, opacity:0.85 }}>{"Top 2 lolos"}</span>
                 </div>
                 <StandingsTable grp={grp} stats={stats} />
               </div>
@@ -671,45 +711,50 @@ function PublicView({ teams, matches, knockout, sponsors, roster, onAdminClick }
         )}
 
         {tab==="schedule" && (
-          <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
-            {["A","B","C"].map(grp=>(
-              <div key={grp} style={{ background:"#fff", borderRadius:12, overflow:"hidden", boxShadow:"0 1px 6px #0001" }}>
-                <div style={{ background:COLORS[grp], color:"#fff", padding:"12px 20px", fontWeight:700, fontSize:14 }}>Grup {grp}</div>
-                <div style={{ padding:"0 16px 12px" }}>
-                  {matches[grp].map((m,i)=>{
-                    const res=matchResult(m);
-                    return(
-                      <div key={m.id} style={{ padding:"12px 0", borderBottom:i<matches[grp].length-1?"1px solid #f1f5f9":"none" }}>
-                        {/* Tanggal & jam */}
-                        {(m.date||m.time) && (
-                          <div style={{ textAlign:"center", marginBottom:6 }}>
-                            <span style={{ fontSize:11, background:"#f1f5f9", borderRadius:6, padding:"2px 10px", color:"#64748b", fontWeight:600 }}>
-                              {m.date && new Date(m.date).toLocaleDateString("id-ID",{weekday:"short",day:"numeric",month:"short",year:"numeric"})}
-                              {m.date && m.time && " · "}
-                              {m.time && m.time+" WIB"}
-                            </span>
-                          </div>
-                        )}
-                        <div style={{ display:"flex", alignItems:"center" }}>
-                          <div style={{ flex:1, textAlign:"right", fontWeight:600, fontSize:13, color:"#1e293b" }}>{m.home}</div>
-                          <div style={{ width:90, textAlign:"center", margin:"0 12px" }}>
-                            {res ? (
-                              <div style={{ background:res.color==="#7c3aed"?"#f5f3ff":"#f1f5f9", borderRadius:8, padding:"4px 10px" }}>
-                                <div style={{ fontWeight:700, color:res.color, fontSize:14 }}>{res.score}</div>
-                                {res.label && <div style={{ fontSize:10, color:res.color }}>{res.label}</div>}
-                              </div>
-                            ) : (
-                              <div style={{ background:"#f8fafc", borderRadius:8, padding:"4px 10px", color:"#cbd5e1", fontSize:12, fontWeight:600 }}>VS</div>
-                            )}
-                          </div>
-                          <div style={{ flex:1, textAlign:"left", fontWeight:600, fontSize:13, color:"#1e293b" }}>{m.away}</div>
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            {[...matches.A.map(m=>({...m,grp:"A"})), ...matches.B.map(m=>({...m,grp:"B"}))]
+              .sort((a,b)=>(a.matchNo||0)-(b.matchNo||0))
+              .map((m, i, arr)=>{
+                const res=matchResult(m);
+                const grp=m.grp;
+                return(
+                  <div key={m.id} style={{ background:"#fff", borderRadius:12, overflow:"hidden", boxShadow:"0 1px 4px #0001" }}>
+                    {/* Header match */}
+                    <div style={{ display:"flex", alignItems:"center", gap:8, padding:"8px 14px", background:COLORS[grp]+"18", borderBottom:`2px solid ${COLORS[grp]}33` }}>
+                      <span style={{ background:COLORS[grp], color:"#fff", borderRadius:6, padding:"2px 8px", fontSize:11, fontWeight:800, minWidth:28, textAlign:"center" }}>
+                        {String(m.matchNo||i+1).padStart(2,"0")}
+                      </span>
+                      <span style={{ fontSize:11, fontWeight:700, color:COLORS[grp] }}>Grup {grp}</span>
+                      {m.note && <span style={{ fontSize:11, color:"#64748b", marginLeft:"auto" }}>{m.note}</span>}
+                    </div>
+                    <div style={{ padding:"10px 14px" }}>
+                      {(m.date||m.time) && (
+                        <div style={{ textAlign:"center", marginBottom:6 }}>
+                          <span style={{ fontSize:11, background:"#f1f5f9", borderRadius:6, padding:"2px 10px", color:"#64748b", fontWeight:600 }}>
+                            {m.date && new Date(m.date).toLocaleDateString("id-ID",{weekday:"short",day:"numeric",month:"short",year:"numeric"})}
+                            {m.date && m.time && " · "}
+                            {m.time && m.time+" WIB"}
+                          </span>
                         </div>
+                      )}
+                      <div style={{ display:"flex", alignItems:"center" }}>
+                        <div style={{ flex:1, textAlign:"right", fontWeight:700, fontSize:13, color:"#1e293b" }}>{m.home}</div>
+                        <div style={{ width:90, textAlign:"center", margin:"0 12px" }}>
+                          {res ? (
+                            <div style={{ background:res.color==="#7c3aed"?"#f5f3ff":"#f1f5f9", borderRadius:8, padding:"4px 10px" }}>
+                              <div style={{ fontWeight:700, color:res.color, fontSize:15 }}>{res.score}</div>
+                              {res.label && <div style={{ fontSize:10, color:res.color }}>{res.label}</div>}
+                            </div>
+                          ) : (
+                            <div style={{ background:"#f8fafc", borderRadius:8, padding:"4px 10px", color:"#cbd5e1", fontSize:12, fontWeight:600 }}>VS</div>
+                          )}
+                        </div>
+                        <div style={{ flex:1, textAlign:"left", fontWeight:700, fontSize:13, color:"#1e293b" }}>{m.away}</div>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
+                    </div>
+                  </div>
+                );
+              })}
           </div>
         )}
 
@@ -724,7 +769,7 @@ function PublicView({ teams, matches, knockout, sponsors, roster, onAdminClick }
         {tab==="bracket" && (
           <div style={{ background:"#fff", borderRadius:12, padding:20, boxShadow:"0 1px 6px #0001" }}>
             <Bracket
-              semifinalists={[statsA[0],statsB[0],statsC[0],statsC[1]]}
+              semifinalists={[statsA[0],statsA[1],statsB[0],statsB[1]]}
               knockout={knockout}
               onUpdate={()=>{}}
               isAdmin={false}
@@ -739,13 +784,13 @@ function PublicView({ teams, matches, knockout, sponsors, roster, onAdminClick }
               <div style={{ padding:16, display:"flex", flexDirection:"column", gap:10 }}>
                 {[
                   [statsA[0],"Juara Grup A",COLORS.A],
+                  [statsA[1],"Runner Up Grup A",COLORS.A],
                   [statsB[0],"Juara Grup B",COLORS.B],
-                  [statsC[0],"Juara Grup C",COLORS.C],
-                  [statsC[1],"Runner Up Grup C","#10b981"],
+                  [statsB[1],"Runner Up Grup B",COLORS.B],
                 ].map(([s,label,c],i)=>(
                   <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 16px", borderRadius:10, background:`${c}11`, border:`2px solid ${c}33` }}>
                     <div style={{ width:38, height:38, borderRadius:"50%", background:c, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:16 }}>
-                      {i<3?"🥇":"🥈"}
+                      {i%2===0?"🥇":"🥈"}
                     </div>
                     <div>
                       <div style={{ fontWeight:700, fontSize:14, color:"#1e293b" }}>{s?.team || <span style={{ color:"#cbd5e1" }}>Belum ditentukan</span>}</div>
@@ -760,7 +805,7 @@ function PublicView({ teams, matches, knockout, sponsors, roster, onAdminClick }
               <b style={{ color:"#1e293b" }}>📜 Sistem Pertandingan</b><br/>
               Menang: 3 poin · Seri: 1 poin · Kalah: 0 poin · WO: Skor 3-0<br/>
               Ranking: Poin → Selisih Gol → Head-to-Head → Kartu<br/>
-              Runner Up Terbaik: Poin → Selisih Gol → Kartu → Adu Penalti (3 penendang)
+              Semifinal: Juara A vs Runner Up B · Runner Up A vs Juara B
             </div>
           </div>
         )}
@@ -786,9 +831,7 @@ function AdminView({ teams, setTeams, matches, setMatches, knockout, setKnockout
 
   const statsA=calcStats(teams.A,matches.A);
   const statsB=calcStats(teams.B,matches.B);
-  const statsC=calcStats(teams.C,matches.C);
-  const runnerC=statsC[1];
-  const semifinalists=[statsA[0],statsB[0],statsC[0],runnerC];
+  const semifinalists=[statsA[0],statsA[1],statsB[0],statsB[1]];
 
   const updateMatch=(grp,id,field,val)=>{
     setMatches(prev=>({...prev,[grp]:prev[grp].map(m=>m.id===id?{...m,[field]:val}:m)}));
@@ -796,7 +839,16 @@ function AdminView({ teams, setTeams, matches, setMatches, knockout, setKnockout
   const updateTeamName=(grp,idx,val)=>{
     setTeams(prev=>{
       const newTeams={...prev,[grp]:prev[grp].map((t,i)=>i===idx?val:t)};
-      setMatches(old=>({...old,[grp]:generateMatches(newTeams[grp],grp)}));
+      setMatches(old=>{
+        const newM = generateMatches(newTeams[grp], grp);
+        // pertahankan skor & kartu yang sudah ada
+        newM.forEach((nm, i) => {
+          const old_ = old[grp][i];
+          if (old_) Object.assign(nm, { homeScore:old_.homeScore, awayScore:old_.awayScore, wo:old_.wo, yellowHome:old_.yellowHome, redHome:old_.redHome, yellowAway:old_.yellowAway, redAway:old_.redAway, scorers:old_.scorers, date:old_.date, time:old_.time });
+          nm.matchNo = i * 2 + (grp === "A" ? 1 : 2);
+        });
+        return {...old, [grp]: newM};
+      });
       return newTeams;
     });
   };
@@ -853,11 +905,11 @@ function AdminView({ teams, setTeams, matches, setMatches, knockout, setKnockout
 
         {tab==="group" && (
           <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
-            {["A","B","C"].map(grp=>(
+            {["A","B"].map(grp=>(
               <div key={grp} style={{ background:"#fff", borderRadius:12, overflow:"hidden", boxShadow:"0 1px 6px #0001" }}>
                 <div style={{ background:COLORS[grp], color:"#fff", padding:"12px 20px", fontWeight:700, fontSize:15, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-                  <span>Grup {grp} {grp==="C"?"(4 Tim)":"(3 Tim)"}</span>
-                  <span style={{ fontSize:12, opacity:0.85 }}>{grp==="C"?"Top 2 lolos":"Juara lolos"}</span>
+                  <span>Grup {grp} {"(4 Tim)"}</span>
+                  <span style={{ fontSize:12, opacity:0.85 }}>{"Top 2 lolos"}</span>
                 </div>
                 <div style={{ padding:"12px 20px", background:BG[grp], display:"flex", gap:8, flexWrap:"wrap" }}>
                   {teams[grp].map((t,i)=>(
@@ -1002,7 +1054,7 @@ function AdminView({ teams, setTeams, matches, setMatches, knockout, setKnockout
 
         {tab==="standings" && (
           <div style={{ display:"flex", flexDirection:"column", gap:20 }}>
-            {[["A",statsA],["B",statsB],["C",statsC]].map(([grp,stats])=>(
+            {[["A",statsA],["B",statsB]].map(([grp,stats])=>(
               <div key={grp} style={{ background:"#fff", borderRadius:12, overflow:"hidden", boxShadow:"0 1px 6px #0001" }}>
                 <div style={{ background:COLORS[grp], color:"#fff", padding:"12px 20px", fontWeight:700, fontSize:14 }}>Klasemen Grup {grp}</div>
                 <StandingsTable grp={grp} stats={stats} isAdmin />
@@ -1021,7 +1073,7 @@ function AdminView({ teams, setTeams, matches, setMatches, knockout, setKnockout
               ✏️ <b>Mode Admin:</b> Input skor semifinal, final, dan perebutan juara 3 di bawah.
             </div>
             <Bracket
-              semifinalists={[statsA[0],statsB[0],statsC[0],statsC[1]]}
+              semifinalists={[statsA[0],statsA[1],statsB[0],statsB[1]]}
               knockout={knockout}
               onUpdate={(key,val)=>setKnockout(prev=>({...prev,[key]:val}))}
               isAdmin={true}
@@ -1036,13 +1088,13 @@ function AdminView({ teams, setTeams, matches, setMatches, knockout, setKnockout
               <div style={{ padding:16, display:"flex", flexDirection:"column", gap:10 }}>
                 {[
                   [statsA[0],"Juara Grup A",COLORS.A],
+                  [statsA[1],"Runner Up Grup A",COLORS.A],
                   [statsB[0],"Juara Grup B",COLORS.B],
-                  [statsC[0],"Juara Grup C",COLORS.C],
-                  [statsC[1],"Runner Up Grup C","#10b981"],
+                  [statsB[1],"Runner Up Grup B",COLORS.B],
                 ].map(([s,label,c],i)=>(
                   <div key={i} style={{ display:"flex", alignItems:"center", gap:12, padding:"12px 16px", borderRadius:10, background:`${c}11`, border:`2px solid ${c}33` }}>
                     <div style={{ width:38, height:38, borderRadius:"50%", background:c, color:"#fff", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:800, fontSize:16 }}>
-                      {i<3?"🥇":"🥈"}
+                      {i%2===0?"🥇":"🥈"}
                     </div>
                     <div>
                       <div style={{ fontWeight:700, fontSize:14, color:"#1e293b" }}>{s?.team || <span style={{ color:"#cbd5e1" }}>Belum ditentukan</span>}</div>
@@ -1143,7 +1195,13 @@ export default function App() {
       if (snap.exists()) {
         const d = snap.data();
         if (d.teams) setTeams(d.teams);
-        if (d.matches) setMatches(d.matches);
+        if (d.matches) {
+          const t = d.teams || {};
+          setMatches({
+            A: t.A ? normalizeMatches(d.matches.A, t.A, "A") : d.matches.A,
+            B: t.B ? normalizeMatches(d.matches.B, t.B, "B") : d.matches.B,
+          });
+        }
         if (d.knockout) setKnockout(d.knockout);
         if (d.sponsors) setSponsors(d.sponsors);
         if (d.roster) setRoster(d.roster);
