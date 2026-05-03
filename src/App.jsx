@@ -407,8 +407,6 @@ function StandingsTable({ grp, stats, isAdmin }) {
                 <td style={{ padding:"8px 6px", fontWeight:700, color:isAdv?COLORS[grp]:"#94a3b8" }}>{i+1}{isAdv?"✓":""}</td>
                 <td style={{ padding:"8px 6px", fontWeight:600, color:"#1e293b" }}>
                   {s.team}
-                  {isAdv&&!isRu&&<span style={{ fontSize:10, background:COLORS[grp], color:"#fff", borderRadius:4, padding:"1px 4px", marginLeft:4 }}>Lolos</span>}
-                  {isRu&&<span style={{ fontSize:10, background:"#f59e0b", color:"#fff", borderRadius:4, padding:"1px 4px", marginLeft:4 }}>Runner Up</span>}
                 </td>
                 {[s.p,s.w,s.d,s.l,s.gf,s.ga].map((v,j)=>(
                   <td key={j} style={{ padding:"8px 6px", textAlign:"center", color:j===1?"#10b981":j===2?"#f59e0b":j===3?"#ef4444":"#1e293b" }}>{v}</td>
