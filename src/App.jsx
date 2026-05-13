@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { db } from "./firebase";
 import { doc, setDoc, onSnapshot } from "firebase/firestore";
+import { Analytics } from "@vercel/analytics/react";
 
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD;
 
@@ -1222,7 +1223,22 @@ export default function App() {
     </div>
   );
 
-  if (mode === "login") return <LoginScreen onLogin={()=>setMode("admin")} onBack={()=>setMode("public")} />;
-  if (mode === "admin") return <AdminView teams={teams} setTeams={setTeams} matches={matches} setMatches={setMatches} knockout={knockout} setKnockout={setKnockout} sponsors={sponsors} setSponsors={setSponsors} roster={roster} setRoster={setRoster} onSave={handleSave} onLogout={()=>setMode("public")} />;
-  return <PublicView teams={teams} matches={matches} knockout={knockout} sponsors={sponsors} roster={roster} onAdminClick={()=>setMode("login")} />;
+  if (mode === "login") return (
+    <>
+      <LoginScreen onLogin={()=>setMode("admin")} onBack={()=>setMode("public")} />
+      <Analytics />
+    </>
+  );
+  if (mode === "admin") return (
+    <>
+      <AdminView teams={teams} setTeams={setTeams} matches={matches} setMatches={setMatches} knockout={knockout} setKnockout={setKnockout} sponsors={sponsors} setSponsors={setSponsors} roster={roster} setRoster={setRoster} onSave={handleSave} onLogout={()=>setMode("public")} />
+      <Analytics />
+    </>
+  );
+  return (
+    <>
+      <PublicView teams={teams} matches={matches} knockout={knockout} sponsors={sponsors} roster={roster} onAdminClick={()=>setMode("login")} />
+      <Analytics />
+    </>
+  );
 }
