@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://tournament-futsal-kartar-kalisari.vercel.app/sitemap.xml
