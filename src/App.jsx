@@ -557,6 +557,8 @@ function RosterAdmin({ teams, roster, setRoster }) {
   const [selected, setSelected] = useState(allTeams[0] || "");
   const [newPlayer, setNewPlayer] = useState({ name:"", number:"", pos:"FP" });
   const [newOfficial, setNewOfficial] = useState({ name:"", role:"" });
+  const [editingPlayer, setEditingPlayer] = useState(null); // index pemain yang diedit
+  const [editingOfficial, setEditingOfficial] = useState(null); // index official yang diedit
 
   const data = roster[selected] || { players: [], officials: [] };
   const update = (patch) => setRoster(prev => ({ ...prev, [selected]: { ...data, ...patch } }));
@@ -566,14 +568,24 @@ function RosterAdmin({ teams, roster, setRoster }) {
     update({ players: [...data.players, { ...newPlayer, name: newPlayer.name.trim() }] });
     setNewPlayer({ name:"", number:"", pos:"FP" });
   };
-  const removePlayer = (i) => update({ players: data.players.filter((_,idx)=>idx!==i) });
+  const removePlayer = (i) => { update({ players: data.players.filter((_,idx)=>idx!==i) }); setEditingPlayer(null); };
+  const updatePlayer = (i, field, val) => {
+    const updated = data.players.map((p,idx) => idx===i ? {...p,[field]:val} : p);
+    update({ players: updated });
+  };
 
   const addOfficial = () => {
     if (!newOfficial.name.trim()) return;
     update({ officials: [...data.officials, { ...newOfficial, name: newOfficial.name.trim() }] });
     setNewOfficial({ name:"", role:"" });
   };
-  const removeOfficial = (i) => update({ officials: data.officials.filter((_,idx)=>idx!==i) });
+  const removeOfficial = (i) => { update({ officials: data.officials.filter((_,idx)=>idx!==i) }); setEditingOfficial(null); };
+  const updateOfficial = (i, field, val) => {
+    const updated = data.officials.map((o,idx) => idx===i ? {...o,[field]:val} : o);
+    update({ officials: updated });
+  };
+
+  const sortedPlayers = [...data.players].sort((a,b)=>(parseInt(a.number)||99)-(parseInt(b.number)||99));
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
@@ -582,7 +594,7 @@ function RosterAdmin({ teams, roster, setRoster }) {
         <div style={{ fontSize:12, fontWeight:600, color:"#64748b", marginBottom:8 }}>Pilih Tim:</div>
         <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
           {["A","B"].map(grp => teams[grp].map(t => (
-            <button key={t} onClick={()=>setSelected(t)}
+            <button key={t} onClick={()=>{ setSelected(t); setEditingPlayer(null); setEditingOfficial(null); }}
               style={{ padding:"6px 14px", borderRadius:8, border:`2px solid ${selected===t?COLORS[grp]:"#e2e8f0"}`, background:selected===t?COLORS[grp]:"#fff", color:selected===t?"#fff":"#1e293b", fontWeight:600, fontSize:12, cursor:"pointer" }}>
               {t}
             </button>
@@ -595,10 +607,23 @@ function RosterAdmin({ teams, roster, setRoster }) {
         <div style={{ background:"#1e3a5f", color:"#fff", padding:"10px 16px", fontWeight:700, fontSize:13 }}>👔 Official — {selected}</div>
         <div style={{ padding:12, display:"flex", flexDirection:"column", gap:8 }}>
           {data.officials.map((o,i) => (
-            <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 10px", borderRadius:8, background:"#f8fafc", border:"1px solid #e2e8f0" }}>
-              <span style={{ flex:1, fontWeight:600, fontSize:12 }}>{o.name}</span>
-              <span style={{ fontSize:11, color:"#64748b" }}>{o.role}</span>
-              <button onClick={()=>removeOfficial(i)} style={{ background:"#fee2e2", border:"none", color:"#ef4444", borderRadius:5, padding:"2px 8px", cursor:"pointer", fontSize:11, fontWeight:700 }}>×</button>
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:8, padding:"7px 10px", borderRadius:8, background: editingOfficial===i?"#eff6ff":"#f8fafc", border:`1px solid ${editingOfficial===i?"#93c5fd":"#e2e8f0"}` }}>
+              {editingOfficial===i ? (
+                <>
+                  <input value={o.name} onChange={e=>updateOfficial(i,"name",e.target.value)}
+                    style={{ flex:2, border:"1px solid #93c5fd", borderRadius:5, padding:"3px 8px", fontSize:12, fontWeight:600 }} />
+                  <input value={o.role} onChange={e=>updateOfficial(i,"role",e.target.value)}
+                    style={{ flex:2, border:"1px solid #93c5fd", borderRadius:5, padding:"3px 8px", fontSize:12 }} />
+                  <button onClick={()=>setEditingOfficial(null)} style={{ background:"#dcfce7", border:"none", color:"#16a34a", borderRadius:5, padding:"2px 8px", cursor:"pointer", fontSize:11, fontWeight:700 }}>✓</button>
+                </>
+              ) : (
+                <>
+                  <span style={{ flex:1, fontWeight:600, fontSize:12 }}>{o.name}</span>
+                  <span style={{ fontSize:11, color:"#64748b" }}>{o.role}</span>
+                  <button onClick={()=>setEditingOfficial(i)} style={{ background:"#eff6ff", border:"none", color:"#2563eb", borderRadius:5, padding:"2px 8px", cursor:"pointer", fontSize:11, fontWeight:700 }}>✏️</button>
+                  <button onClick={()=>removeOfficial(i)} style={{ background:"#fee2e2", border:"none", color:"#ef4444", borderRadius:5, padding:"2px 8px", cursor:"pointer", fontSize:11, fontWeight:700 }}>×</button>
+                </>
+              )}
             </div>
           ))}
           <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
@@ -619,19 +644,48 @@ function RosterAdmin({ teams, roster, setRoster }) {
           {data.players.length > 0 && (
             <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12, marginBottom:6 }}>
               <thead><tr style={{ background:"#f8fafc" }}>
-                {["No","Nama","Pos",""].map((h,i)=><th key={i} style={{ padding:"6px 8px", textAlign:i===0?"center":"left", color:"#64748b", fontWeight:600 }}>{h}</th>)}
+                {["No","Nama","Posisi",""].map((h,i)=><th key={i} style={{ padding:"6px 8px", textAlign:i===0?"center":"left", color:"#64748b", fontWeight:600 }}>{h}</th>)}
               </tr></thead>
               <tbody>
-                {data.players.sort((a,b)=>(parseInt(a.number)||99)-(parseInt(b.number)||99)).map((p,i)=>(
-                  <tr key={i} style={{ borderBottom:"1px solid #f1f5f9" }}>
-                    <td style={{ padding:"6px 8px", textAlign:"center", fontWeight:700, color:"#2563eb", width:36 }}>{p.number||"-"}</td>
-                    <td style={{ padding:"6px 8px", fontWeight:600 }}>{p.name}</td>
-                    <td style={{ padding:"6px 8px", fontSize:11, color:"#64748b" }}>{p.pos||"-"}</td>
-                    <td style={{ padding:"6px 8px" }}>
-                      <button onClick={()=>removePlayer(data.players.indexOf(p))} style={{ background:"#fee2e2", border:"none", color:"#ef4444", borderRadius:5, padding:"2px 8px", cursor:"pointer", fontSize:11, fontWeight:700 }}>×</button>
-                    </td>
-                  </tr>
-                ))}
+                {sortedPlayers.map((p) => {
+                  const realIdx = data.players.indexOf(p);
+                  const isEditing = editingPlayer === realIdx;
+                  return (
+                    <tr key={realIdx} style={{ borderBottom:"1px solid #f1f5f9", background: isEditing?"#eff6ff":"transparent" }}>
+                      <td style={{ padding:"4px 6px", textAlign:"center", width:50 }}>
+                        {isEditing ? (
+                          <input type="number" value={p.number} onChange={e=>updatePlayer(realIdx,"number",e.target.value)}
+                            style={{ width:40, textAlign:"center", border:"1px solid #93c5fd", borderRadius:4, padding:"2px", fontSize:12, fontWeight:700, color:"#2563eb" }} />
+                        ) : (
+                          <span style={{ fontWeight:700, color:"#2563eb" }}>{p.number||"-"}</span>
+                        )}
+                      </td>
+                      <td style={{ padding:"6px 8px", fontWeight:600 }}>{p.name}</td>
+                      <td style={{ padding:"4px 6px" }}>
+                        {isEditing ? (
+                          <select value={p.pos} onChange={e=>updatePlayer(realIdx,"pos",e.target.value)}
+                            style={{ border:"1px solid #93c5fd", borderRadius:4, padding:"3px 6px", fontSize:11 }}>
+                            <option value="GK">Kiper (GK)</option>
+                            <option value="FP">Pemain (FP)</option>
+                            <option value="CF">Pivot (CF)</option>
+                          </select>
+                        ) : (
+                          <span style={{ fontSize:11, color:"#64748b" }}>{p.pos||"-"}</span>
+                        )}
+                      </td>
+                      <td style={{ padding:"4px 6px", whiteSpace:"nowrap" }}>
+                        {isEditing ? (
+                          <button onClick={()=>setEditingPlayer(null)} style={{ background:"#dcfce7", border:"none", color:"#16a34a", borderRadius:5, padding:"2px 8px", cursor:"pointer", fontSize:11, fontWeight:700 }}>✓ Selesai</button>
+                        ) : (
+                          <div style={{ display:"flex", gap:4 }}>
+                            <button onClick={()=>setEditingPlayer(realIdx)} style={{ background:"#eff6ff", border:"none", color:"#2563eb", borderRadius:5, padding:"2px 7px", cursor:"pointer", fontSize:11, fontWeight:700 }}>✏️</button>
+                            <button onClick={()=>removePlayer(realIdx)} style={{ background:"#fee2e2", border:"none", color:"#ef4444", borderRadius:5, padding:"2px 7px", cursor:"pointer", fontSize:11, fontWeight:700 }}>×</button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}
