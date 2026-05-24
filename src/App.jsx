@@ -565,7 +565,8 @@ function RosterAdmin({ teams, roster, setRoster }) {
 
   const addPlayer = () => {
     if (!newPlayer.name.trim()) return;
-    update({ players: [...data.players, { ...newPlayer, name: newPlayer.name.trim() }] });
+    const nextNo = newPlayer.number || (Math.max(0, ...data.players.map(p => parseInt(p.number)||0)) + 1).toString();
+    update({ players: [...data.players, { ...newPlayer, number: nextNo, name: newPlayer.name.trim() }] });
     setNewPlayer({ name:"", number:"", pos:"FP" });
   };
   const removePlayer = (i) => { update({ players: data.players.filter((_,idx)=>idx!==i) }); setEditingPlayer(null); };
@@ -644,14 +645,15 @@ function RosterAdmin({ teams, roster, setRoster }) {
           {data.players.length > 0 && (
             <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12, marginBottom:6 }}>
               <thead><tr style={{ background:"#f8fafc" }}>
-                {["No","Nama","Posisi",""].map((h,i)=><th key={i} style={{ padding:"6px 8px", textAlign:i===0?"center":"left", color:"#64748b", fontWeight:600 }}>{h}</th>)}
+                {["#","No","Nama","Posisi",""].map((h,i)=><th key={i} style={{ padding:"6px 8px", textAlign:i<2?"center":"left", color:"#64748b", fontWeight:600 }}>{h}</th>)}
               </tr></thead>
               <tbody>
-                {sortedPlayers.map((p) => {
+                {sortedPlayers.map((p, urutan) => {
                   const realIdx = data.players.indexOf(p);
                   const isEditing = editingPlayer === realIdx;
                   return (
                     <tr key={realIdx} style={{ borderBottom:"1px solid #f1f5f9", background: isEditing?"#eff6ff":"transparent" }}>
+                      <td style={{ padding:"4px 6px", textAlign:"center", width:28, color:"#94a3b8", fontSize:11, fontWeight:600 }}>{urutan+1}</td>
                       <td style={{ padding:"4px 6px", textAlign:"center", width:50 }}>
                         {isEditing ? (
                           <input type="number" value={p.number} onChange={e=>updatePlayer(realIdx,"number",e.target.value)}
