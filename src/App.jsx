@@ -588,6 +588,56 @@ function RosterAdmin({ teams, roster, setRoster }) {
 
   const sortedPlayers = [...data.players].sort((a,b)=>(parseInt(a.number)||99)-(parseInt(b.number)||99));
 
+  const exportExcel = () => {
+    const rows = [
+      ["No Urut","No Punggung","Nama Pemain","Posisi","Tim"],
+      ...sortedPlayers.map((p,i) => [
+        i+1, p.number||"-", p.name,
+        p.pos==="GK"?"Kiper":p.pos==="CF"?"Pivot":"Pemain",
+        selected
+      ])
+    ];
+    const csv = "﻿" + rows.map(r=>r.map(v=>`"${v}"`).join(",")).join("\n");
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8;"}));
+    a.download = `pemain-${selected.replace(/\s+/g,"-")}.csv`;
+    a.click();
+  };
+
+  const exportPDF = () => {
+    const posLabel = {GK:"Kiper",FP:"Pemain",CF:"Pivot"};
+    const rows = sortedPlayers.map((p,i)=>`
+      <tr>
+        <td style="text-align:center;color:#94a3b8">${i+1}</td>
+        <td style="text-align:center;font-weight:700;color:#2563eb">${p.number||"-"}</td>
+        <td style="font-weight:600">${p.name}</td>
+        <td>${posLabel[p.pos]||p.pos||"-"}</td>
+      </tr>`).join("");
+    const w = window.open("","_blank");
+    w.document.write(`<!DOCTYPE html><html><head>
+      <title>Pemain ${selected}</title>
+      <style>
+        body{font-family:Arial,sans-serif;padding:24px;color:#1e293b}
+        h2{margin:0;color:#1e3a5f}p{color:#64748b;font-size:13px;margin:4px 0 16px}
+        table{width:100%;border-collapse:collapse}
+        th{background:#1e3a5f;color:#fff;padding:9px 12px;text-align:left;font-size:13px}
+        td{padding:8px 12px;border-bottom:1px solid #e2e8f0;font-size:13px}
+        tr:nth-child(even)td{background:#f8fafc}
+        .footer{margin-top:16px;font-size:11px;color:#94a3b8}
+        @media print{@page{margin:1.5cm}}
+      </style></head><body>
+      <h2>Daftar Pemain — ${selected}</h2>
+      <p>Turnamen Futsal For Unity Kelurahan Kalisari 2026 &nbsp;·&nbsp; Total: ${sortedPlayers.length} pemain</p>
+      <table>
+        <thead><tr><th>#</th><th>No Punggung</th><th>Nama Pemain</th><th>Posisi</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div class="footer">Dicetak dari turnamen-futsal-kartar-kalisari.vercel.app</div>
+      <script>window.onload=()=>window.print()</script>
+    </body></html>`);
+    w.document.close();
+  };
+
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
       {/* Pilih Tim */}
@@ -640,7 +690,15 @@ function RosterAdmin({ teams, roster, setRoster }) {
 
       {/* Form Pemain */}
       <div style={{ background:"#fff", borderRadius:12, overflow:"hidden", boxShadow:"0 1px 6px #0001" }}>
-        <div style={{ background:"#2563eb", color:"#fff", padding:"10px 16px", fontWeight:700, fontSize:13 }}>⚽ Pemain — {selected}</div>
+        <div style={{ background:"#2563eb", color:"#fff", padding:"10px 16px", fontWeight:700, fontSize:13, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <span>⚽ Pemain — {selected}</span>
+          {data.players.length > 0 && (
+            <div style={{ display:"flex", gap:6 }}>
+              <button onClick={exportExcel} style={{ background:"#ffffff22", border:"1px solid #ffffff55", color:"#fff", borderRadius:6, padding:"3px 10px", fontSize:11, fontWeight:600, cursor:"pointer" }}>📥 Excel</button>
+              <button onClick={exportPDF} style={{ background:"#ffffff22", border:"1px solid #ffffff55", color:"#fff", borderRadius:6, padding:"3px 10px", fontSize:11, fontWeight:600, cursor:"pointer" }}>🖨️ PDF</button>
+            </div>
+          )}
+        </div>
         <div style={{ padding:12, display:"flex", flexDirection:"column", gap:6 }}>
           {data.players.length > 0 && (
             <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12, marginBottom:6 }}>
