@@ -606,33 +606,68 @@ function RosterAdmin({ teams, roster, setRoster }) {
 
   const exportPDF = () => {
     const posLabel = {GK:"Kiper",FP:"Pemain",CF:"Pivot"};
-    const rows = sortedPlayers.map((p,i)=>`
-      <tr>
-        <td style="text-align:center;color:#94a3b8">${i+1}</td>
-        <td style="text-align:center;font-weight:700;color:#2563eb">${p.number||"-"}</td>
-        <td style="font-weight:600">${p.name}</td>
-        <td>${posLabel[p.pos]||p.pos||"-"}</td>
-      </tr>`).join("");
+    const numRows = Math.max(12, sortedPlayers.length);
+    const playerRows = Array.from({length: numRows}, (_,i) => {
+      const p = sortedPlayers[i];
+      return `<tr>
+        <td style="text-align:center;font-size:13px">${i+1}</td>
+        <td style="text-align:center">${p?.number||""}</td>
+        <td style="padding:5px 10px">${p?.name||""}</td>
+        <td style="text-align:center">${p?(posLabel[p.pos]||p.pos||""):""}</td>
+        <td></td><td></td><td></td>
+      </tr>`;
+    }).join("");
+    const off1 = data.officials[0];
+    const off2 = data.officials[1];
+    const totalRows = numRows + 4;
     const w = window.open("","_blank");
     w.document.write(`<!DOCTYPE html><html><head>
-      <title>Pemain ${selected}</title>
+      <title>Daftar Susunan Pemain - ${selected}</title>
       <style>
-        body{font-family:Arial,sans-serif;padding:24px;color:#1e293b}
-        h2{margin:0;color:#1e3a5f}p{color:#64748b;font-size:13px;margin:4px 0 16px}
+        *{box-sizing:border-box;margin:0;padding:0}
+        body{font-family:Arial,sans-serif;padding:20px}
+        .title{text-align:center;font-weight:bold;font-size:13px;margin-bottom:20px;line-height:2}
         table{width:100%;border-collapse:collapse}
-        th{background:#1e3a5f;color:#fff;padding:9px 12px;text-align:left;font-size:13px}
-        td{padding:8px 12px;border-bottom:1px solid #e2e8f0;font-size:13px}
-        tr:nth-child(even)td{background:#f8fafc}
-        .footer{margin-top:16px;font-size:11px;color:#94a3b8}
-        @media print{@page{margin:1.5cm}}
-      </style></head><body>
-      <h2>Daftar Pemain — ${selected}</h2>
-      <p>Turnamen Futsal For Unity Kelurahan Kalisari 2026 &nbsp;·&nbsp; Total: ${sortedPlayers.length} pemain</p>
+        td,th{border:1px solid #000;padding:5px 6px;vertical-align:middle;font-size:11px}
+        .left-td{width:110px;vertical-align:top;font-weight:bold;font-size:11px;padding:8px;display:flex;flex-direction:column;justify-content:space-between}
+        @media print{@page{size:A4 landscape;margin:1cm}}
+      </style>
+    </head><body>
+      <div class="title">
+        DAFTAR SUSUNAN PEMAIN<br>
+        TURNAMEN FUTSAL PIALA BERGILIR ANTAR RW KELURAHAN KALISARI
+      </div>
       <table>
-        <thead><tr><th>#</th><th>No Punggung</th><th>Nama Pemain</th><th>Posisi</th></tr></thead>
-        <tbody>${rows}</tbody>
+        <tbody>
+          <tr>
+            <td rowspan="${totalRows}" style="width:110px;font-weight:bold;font-size:11px;vertical-align:top;padding:8px">
+              <table style="border:none;width:100%;height:100%">
+                <tr><td style="border:none;padding:0;vertical-align:top">RW TEAM : ${selected}</td></tr>
+                <tr><td style="border:none;padding:0;vertical-align:bottom;padding-top:${numRows*14}px">OFFICIAL/COACH :</td></tr>
+              </table>
+            </td>
+            <th rowspan="2" style="width:46px;text-align:center">NO</th>
+            <th rowspan="2" style="width:100px;text-align:center">NO PUNGGUNG</th>
+            <th rowspan="2" style="text-align:center">NAMA LENGKAP PEMAIN</th>
+            <th rowspan="2" style="width:80px;text-align:center">POSISI</th>
+            <th colspan="3" style="text-align:center">STATUS PEMAIN</th>
+          </tr>
+          <tr>
+            <th style="width:70px;text-align:center">MAIN</th>
+            <th style="width:80px;text-align:center">CADANGAN</th>
+            <th style="width:60px;text-align:center">JOKER</th>
+          </tr>
+          ${playerRows}
+          <tr>
+            <td colspan="3" style="text-align:center;font-weight:bold;font-size:10px;letter-spacing:1px;padding:6px">OFFICIAL 1</td>
+            <td colspan="4" style="text-align:center;font-weight:bold;font-size:10px;letter-spacing:1px;padding:6px">OFFICIAL 2</td>
+          </tr>
+          <tr>
+            <td colspan="3" style="height:60px;text-align:center;vertical-align:bottom;padding-bottom:6px;font-size:11px">${off1?.name||""}</td>
+            <td colspan="4" style="height:60px;text-align:center;vertical-align:bottom;padding-bottom:6px;font-size:11px">${off2?.name||""}</td>
+          </tr>
+        </tbody>
       </table>
-      <div class="footer">Dicetak dari turnamen-futsal-kartar-kalisari.vercel.app</div>
       <script>window.onload=()=>window.print()</script>
     </body></html>`);
     w.document.close();
@@ -690,15 +725,7 @@ function RosterAdmin({ teams, roster, setRoster }) {
 
       {/* Form Pemain */}
       <div style={{ background:"#fff", borderRadius:12, overflow:"hidden", boxShadow:"0 1px 6px #0001" }}>
-        <div style={{ background:"#2563eb", color:"#fff", padding:"10px 16px", fontWeight:700, fontSize:13, display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <span>⚽ Pemain — {selected}</span>
-          {data.players.length > 0 && (
-            <div style={{ display:"flex", gap:6 }}>
-              <button onClick={exportExcel} style={{ background:"#ffffff22", border:"1px solid #ffffff55", color:"#fff", borderRadius:6, padding:"3px 10px", fontSize:11, fontWeight:600, cursor:"pointer" }}>📥 Excel</button>
-              <button onClick={exportPDF} style={{ background:"#ffffff22", border:"1px solid #ffffff55", color:"#fff", borderRadius:6, padding:"3px 10px", fontSize:11, fontWeight:600, cursor:"pointer" }}>🖨️ PDF</button>
-            </div>
-          )}
-        </div>
+        <div style={{ background:"#2563eb", color:"#fff", padding:"10px 16px", fontWeight:700, fontSize:13 }}>⚽ Pemain — {selected}</div>
         <div style={{ padding:12, display:"flex", flexDirection:"column", gap:6 }}>
           {data.players.length > 0 && (
             <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12, marginBottom:6 }}>
@@ -763,6 +790,12 @@ function RosterAdmin({ teams, roster, setRoster }) {
             <button onClick={addPlayer} onKeyDown={e=>e.key==="Enter"&&addPlayer()}
               style={{ background:"#2563eb", color:"#fff", border:"none", borderRadius:6, padding:"6px 14px", fontSize:12, fontWeight:700, cursor:"pointer" }}>+ Tambah</button>
           </div>
+          {data.players.length > 0 && (
+            <div style={{ display:"flex", gap:8, marginTop:8, paddingTop:8, borderTop:"1px solid #f1f5f9" }}>
+              <button onClick={exportExcel} style={{ flex:1, background:"#f0fdf4", border:"1px solid #86efac", color:"#16a34a", borderRadius:6, padding:"7px", fontSize:12, fontWeight:700, cursor:"pointer" }}>📥 Download Excel</button>
+              <button onClick={exportPDF} style={{ flex:1, background:"#eff6ff", border:"1px solid #93c5fd", color:"#2563eb", borderRadius:6, padding:"7px", fontSize:12, fontWeight:700, cursor:"pointer" }}>🖨️ Download PDF</button>
+            </div>
+          )}
         </div>
       </div>
     </div>
