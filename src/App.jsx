@@ -497,8 +497,8 @@ function StandingsTable({ grp, stats, isAdmin }) {
 }
 
 // ─── TOP SCORERS TABLE (shared) ──────────────────────────────────
-function TopScorers({ allMatches }) {
-  const scorers = calcTopScorers(allMatches);
+function TopScorers({ allMatches, knockout }) {
+  const scorers = calcTopScorers(allMatches, knockout);
   return (
     <div style={{ background:"#fff", borderRadius:12, overflow:"hidden", boxShadow:"0 1px 6px #0001" }}>
       <div style={{ background:"linear-gradient(135deg,#f59e0b,#d97706)", color:"#fff", padding:"12px 20px", fontWeight:700, fontSize:14 }}>
