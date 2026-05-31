@@ -70,10 +70,10 @@ _mB.forEach((m, i) => m.matchNo = i * 2 + 2);
 const initMatches = { A: _mA, B: _mB };
 
 const initKnockout = {
-  semi1: { homeScore: "", awayScore: "", wo: "none" }, // Juara A vs Runner Up B
-  semi2: { homeScore: "", awayScore: "", wo: "none" }, // Runner Up A vs Juara B
-  final: { homeScore: "", awayScore: "", wo: "none" },
-  third: { homeScore: "", awayScore: "", wo: "none" }, // Perebutan juara 3
+  semi1: { homeScore: "", awayScore: "", wo: "none", scorers: [], home: "", away: "" },
+  semi2: { homeScore: "", awayScore: "", wo: "none", scorers: [], home: "", away: "" },
+  final: { homeScore: "", awayScore: "", wo: "none", scorers: [], home: "", away: "" },
+  third: { homeScore: "", awayScore: "", wo: "none", scorers: [], home: "", away: "" },
 };
 
 const initSponsors = []; // { name, logoUrl }
@@ -191,16 +191,19 @@ function calcStats(teams, matches) {
   return arr;
 }
 
-function calcTopScorers(allMatches) {
+function calcTopScorers(allMatches, knockout) {
   const map = {};
-  Object.values(allMatches).flat().forEach(m => {
+  const processMatch = (m) => {
     (m.scorers || []).forEach(s => {
       const teamName = s.side === "home" ? m.home : m.away;
+      if (!teamName) return;
       const key = `${s.name}||${teamName}`;
       if (!map[key]) map[key] = { name: s.name, team: teamName, goals: 0 };
       map[key].goals += parseInt(s.goals) || 0;
     });
-  });
+  };
+  Object.values(allMatches).flat().forEach(processMatch);
+  if (knockout) Object.values(knockout).forEach(processMatch);
   return Object.values(map).filter(s => s.goals > 0).sort((a, b) => b.goals - a.goals);
 }
 
@@ -224,13 +227,23 @@ function getKnockoutLoser(home, away, match) {
 }
 
 // ─── MATCH CARD (untuk bagan) ────────────────────────────────────
-function MatchCard({ label, home, away, match, isAdmin, onUpdate }) {
+function MatchCard({ label, home, away, match, isAdmin, onUpdate, roster }) {
+  const [showScorer, setShowScorer] = useState(false);
+  const [newScorer, setNewScorer] = useState({ name:"", side:"home", goals:1 });
+
   const ph = "Belum ditentukan";
   const wo = match.wo;
   const scored = wo === "none" ? (match.homeScore !== "" && match.awayScore !== "") : true;
   const hs = wo === "home_wo" ? 3 : wo === "away_wo" ? 0 : parseInt(match.homeScore) || 0;
   const as_ = wo === "away_wo" ? 3 : wo === "home_wo" ? 0 : parseInt(match.awayScore) || 0;
   const winner = scored && home && away ? (hs > as_ ? home : as_ > hs ? away : null) : null;
+
+  const addScorer = () => {
+    if (!newScorer.name.trim()) return;
+    onUpdate({ ...match, scorers: [...(match.scorers||[]), { name: newScorer.name.trim(), side: newScorer.side, goals: parseInt(newScorer.goals)||1 }] });
+    setNewScorer({ name:"", side:"home", goals:1 });
+  };
+  const removeScorer = (idx) => onUpdate({ ...match, scorers: (match.scorers||[]).filter((_,i)=>i!==idx) });
 
   const teamRow = (team, score, isHome) => (
     <div style={{ padding:"10px 14px", display:"flex", alignItems:"center", gap:8,
@@ -253,13 +266,15 @@ function MatchCard({ label, home, away, match, isAdmin, onUpdate }) {
     </div>
   );
 
+  const totalGoals = (match.scorers||[]).reduce((s,c)=>s+(parseInt(c.goals)||0),0);
+
   return (
     <div style={{ background:"#fff", borderRadius:12, overflow:"hidden", boxShadow:"0 2px 10px #0002" }}>
       <div style={{ background:"#1e3a5f", color:"#fff", padding:"7px 14px", fontSize:11, fontWeight:700, textAlign:"center", letterSpacing:1 }}>{label}</div>
       {teamRow(home, hs, true)}
       {teamRow(away, as_, false)}
       {isAdmin && home && away && (
-        <div style={{ padding:"6px 14px 10px", background:"#f8fafc" }}>
+        <div style={{ padding:"6px 14px 8px", background:"#f8fafc" }}>
           <select value={wo} onChange={e => onUpdate({ ...match, wo: e.target.value })}
             style={{ fontSize:11, border:"1px solid #e2e8f0", borderRadius:4, padding:"2px 6px", width:"100%", color:"#64748b" }}>
             <option value="none">— Normal —</option>
@@ -268,13 +283,65 @@ function MatchCard({ label, home, away, match, isAdmin, onUpdate }) {
           </select>
         </div>
       )}
-      {wo !== "none" && <div style={{ padding:"3px 14px 8px", background:"#f5f3ff", fontSize:11, color:"#7c3aed", fontWeight:700, textAlign:"center" }}>WO</div>}
+      {wo !== "none" && <div style={{ padding:"3px 14px 6px", background:"#f5f3ff", fontSize:11, color:"#7c3aed", fontWeight:700, textAlign:"center" }}>WO</div>}
+
+      {/* ── Scorer section ── */}
+      {isAdmin && home && away && (
+        <div style={{ borderTop:"1px solid #f1f5f9" }}>
+          <button onClick={()=>setShowScorer(!showScorer)}
+            style={{ width:"100%", background: showScorer?"#fffbeb":"#f8fafc", border:"none", padding:"6px 14px", fontSize:11, fontWeight:700, color: totalGoals>0?"#d97706":"#94a3b8", cursor:"pointer", textAlign:"left" }}>
+            {totalGoals>0 ? `⚽ ${totalGoals} Gol — ${showScorer?"Tutup":"Lihat/Edit"}` : "⚽ Tambah Pencetak Gol"}
+          </button>
+          {showScorer && (
+            <div style={{ padding:"10px 14px 12px", background:"#fffbeb", display:"flex", flexDirection:"column", gap:8 }}>
+              {/* Daftar scorer */}
+              {(match.scorers||[]).length > 0 && (
+                <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
+                  {(match.scorers||[]).map((s,si)=>(
+                    <div key={si} style={{ display:"flex", alignItems:"center", gap:4, background:"#fff", border:"1px solid #fcd34d", borderRadius:6, padding:"3px 8px", fontSize:11 }}>
+                      <span style={{ fontWeight:600 }}>{s.name}</span>
+                      <span style={{ color:"#94a3b8" }}>({s.side==="home"?home:away})</span>
+                      <span style={{ color:"#f59e0b", fontWeight:700 }}>×{s.goals}</span>
+                      <button onClick={()=>removeScorer(si)} style={{ background:"none", border:"none", color:"#ef4444", cursor:"pointer", fontSize:12, lineHeight:1, padding:"0 2px" }}>×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* Form tambah */}
+              <div style={{ display:"flex", gap:5, flexWrap:"wrap", alignItems:"center" }}>
+                <select value={newScorer.side} onChange={e=>setNewScorer(p=>({...p,side:e.target.value,name:""}))}
+                  style={{ border:"1px solid #e2e8f0", borderRadius:5, padding:"4px 6px", fontSize:11 }}>
+                  <option value="home">{home}</option>
+                  <option value="away">{away}</option>
+                </select>
+                {(roster?.[newScorer.side==="home"?home:away]?.players||[]).length>0 ? (
+                  <select value={newScorer.name} onChange={e=>setNewScorer(p=>({...p,name:e.target.value}))}
+                    style={{ border:"1px solid #e2e8f0", borderRadius:5, padding:"4px 8px", fontSize:11, minWidth:130 }}>
+                    <option value="">— Pilih pemain —</option>
+                    {[...(roster?.[newScorer.side==="home"?home:away]?.players||[])].sort((a,b)=>(parseInt(a.number)||99)-(parseInt(b.number)||99)).map((p,pi)=>(
+                      <option key={pi} value={p.name}>{p.number?`#${p.number} `:""}{p.name}</option>
+                    ))}
+                  </select>
+                ) : (
+                  <input placeholder="Nama pemain" value={newScorer.name} onChange={e=>setNewScorer(p=>({...p,name:e.target.value}))}
+                    onKeyDown={e=>e.key==="Enter"&&addScorer()}
+                    style={{ border:"1px solid #e2e8f0", borderRadius:5, padding:"4px 8px", fontSize:11, width:130 }} />
+                )}
+                <input type="number" min="1" value={newScorer.goals} onChange={e=>setNewScorer(p=>({...p,goals:e.target.value}))}
+                  style={{ width:40, border:"1px solid #e2e8f0", borderRadius:5, padding:"4px", fontSize:11, textAlign:"center" }} />
+                <button onClick={addScorer}
+                  style={{ background:"#f59e0b", color:"#fff", border:"none", borderRadius:5, padding:"4px 10px", fontSize:11, fontWeight:700, cursor:"pointer" }}>+ Tambah</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
 // ─── BRACKET BAGAN ───────────────────────────────────────────────
-function Bracket({ semifinalists, knockout, onUpdate, isAdmin }) {
+function Bracket({ semifinalists, knockout, onUpdate, isAdmin, roster }) {
   const s1h = semifinalists[0]?.team; // Juara A
   const s1a = semifinalists[3]?.team; // Runner Up B
   const s2h = semifinalists[1]?.team; // Runner Up A
@@ -303,12 +370,14 @@ function Bracket({ semifinalists, knockout, onUpdate, isAdmin }) {
         <div style={{ flex:"1 1 220px" }}>
           <div style={{ fontSize:11, color:"#94a3b8", marginBottom:4, textAlign:"center" }}>Semi 1</div>
           <MatchCard label={`${s1h||"Juara A"} vs ${s1a||"Runner Up B"}`} home={s1h} away={s1a}
-            match={knockout.semi1} isAdmin={isAdmin} onUpdate={v=>onUpdate("semi1",v)} />
+            match={knockout.semi1} isAdmin={isAdmin} roster={roster}
+            onUpdate={v=>onUpdate("semi1",{...v,home:s1h,away:s1a})} />
         </div>
         <div style={{ flex:"1 1 220px" }}>
           <div style={{ fontSize:11, color:"#94a3b8", marginBottom:4, textAlign:"center" }}>Semi 2</div>
           <MatchCard label={`${s2h||"Runner Up A"} vs ${s2a||"Juara B"}`} home={s2h} away={s2a}
-            match={knockout.semi2} isAdmin={isAdmin} onUpdate={v=>onUpdate("semi2",v)} />
+            match={knockout.semi2} isAdmin={isAdmin} roster={roster}
+            onUpdate={v=>onUpdate("semi2",{...v,home:s2h,away:s2a})} />
         </div>
       </div>
 
@@ -318,7 +387,8 @@ function Bracket({ semifinalists, knockout, onUpdate, isAdmin }) {
       <div style={{ fontSize:11, fontWeight:700, color:"#64748b", letterSpacing:2, marginBottom:8, textTransform:"uppercase", textAlign:"center" }}>Final</div>
       <div style={{ maxWidth:360, margin:"0 auto", width:"100%" }}>
         <MatchCard label="🏆 GRAND FINAL" home={w1} away={w2}
-          match={knockout.final} isAdmin={isAdmin} onUpdate={v=>onUpdate("final",v)} />
+          match={knockout.final} isAdmin={isAdmin} roster={roster}
+          onUpdate={v=>onUpdate("final",{...v,home:w1,away:w2})} />
       </div>
 
       {/* CHAMPION */}
@@ -339,7 +409,8 @@ function Bracket({ semifinalists, knockout, onUpdate, isAdmin }) {
           <div style={{ fontSize:11, fontWeight:700, color:"#64748b", letterSpacing:2, marginBottom:8, textTransform:"uppercase", textAlign:"center" }}>Perebutan Juara 3</div>
           <div style={{ maxWidth:360, margin:"0 auto", width:"100%" }}>
             <MatchCard label={`${l1||"?"} vs ${l2||"?"}`} home={l1} away={l2}
-              match={knockout.third} isAdmin={isAdmin} onUpdate={v=>onUpdate("third",v)} />
+              match={knockout.third} isAdmin={isAdmin} roster={roster}
+              onUpdate={v=>onUpdate("third",{...v,home:l1,away:l2})} />
           </div>
           {third && (
             <div style={{ marginTop:12, textAlign:"center", background:"#f1f5f9", borderRadius:10, padding:"14px", color:"#64748b" }}>
@@ -905,7 +976,7 @@ function PublicView({ teams, matches, knockout, sponsors, roster, onAdminClick }
         )}
 
         {tab==="topscorer" && (
-          <TopScorers allMatches={matches} />
+          <TopScorers allMatches={matches} knockout={knockout} />
         )}
 
         {tab==="roster" && (
@@ -1223,6 +1294,7 @@ function AdminView({ teams, setTeams, matches, setMatches, knockout, setKnockout
               knockout={knockout}
               onUpdate={(key,val)=>setKnockout(prev=>({...prev,[key]:val}))}
               isAdmin={true}
+              roster={roster}
             />
           </div>
         )}
