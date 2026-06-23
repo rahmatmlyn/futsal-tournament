@@ -1700,33 +1700,42 @@ export default function App() {
   return (
     <div style={{ fontFamily:"Inter,sans-serif", background:"#f8fafc", minHeight:"100vh" }}>
       {/* ── Navbar ── */}
-      <nav style={{ background:"#1e293b", padding:"0 16px", display:"flex", alignItems:"center", gap:0, position:"sticky", top:0, zIndex:100, boxShadow:"0 2px 8px #0003" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:12, paddingRight:16, borderRight:"1px solid #334155", marginRight:8 }}>
-          <span style={{ fontSize:20 }}>⚽</span>
-          <span style={{ color:"#fff", fontWeight:800, fontSize:13, lineHeight:1.3 }}>FFU<br/><span style={{ fontWeight:400, fontSize:11, opacity:0.7 }}>Kalisari 2026</span></span>
+      <nav style={{ background:"#1e293b", position:"sticky", top:0, zIndex:100, boxShadow:"0 2px 8px #0003" }}>
+        {/* Baris atas: logo + tombol admin */}
+        <div style={{ display:"flex", alignItems:"center", padding:"8px 14px", borderBottom:"1px solid #334155" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:8, flex:1 }}>
+            <span style={{ fontSize:22 }}>⚽</span>
+            <div style={{ color:"#fff", fontWeight:800, fontSize:13, lineHeight:1.3 }}>
+              FFU <span style={{ fontWeight:400, fontSize:11, opacity:0.65 }}>Kalisari 2026</span>
+            </div>
+          </div>
+          <div style={{ display:"flex", gap:6, alignItems:"center" }}>
+            {isAdmin && (
+              <span style={{ fontSize:10, background:"#f59e0b33", color:"#fbbf24", border:"1px solid #f59e0b44", borderRadius:5, padding:"2px 7px", fontWeight:700 }}>
+                ADMIN
+              </span>
+            )}
+            {isAdmin
+              ? <button onClick={()=>setMode("public")} style={{ background:"#ef444422", border:"1px solid #ef444444", color:"#fca5a5", borderRadius:7, padding:"5px 10px", cursor:"pointer", fontSize:12, fontWeight:600, whiteSpace:"nowrap" }}>🚪 Keluar</button>
+              : <button onClick={()=>setMode("login")} style={{ background:"#ffffff11", border:"1px solid #ffffff22", color:"#94a3b8", borderRadius:7, padding:"5px 10px", cursor:"pointer", fontSize:12, fontWeight:600, whiteSpace:"nowrap" }}>🔐 Admin</button>
+            }
+          </div>
         </div>
-        {[
-          ["kalisari","🏠 FFU Kalisari"],
-          ["kecamatan","🏙️ Kecamatan"],
-        ].map(([p,label])=>(
-          <button key={p} onClick={()=>setPage(p)}
-            style={{ padding:"14px 16px", background:"none", border:"none", cursor:"pointer", fontWeight:700, fontSize:13,
-              color: page===p?"#fff":"#94a3b8",
-              borderBottom: page===p?`3px solid ${p==="kecamatan"?KEC_COLOR:"#3b82f6"}`:"3px solid transparent",
-              transition:"all 0.15s" }}>
-            {label}
-          </button>
-        ))}
-        <div style={{ marginLeft:"auto", display:"flex", gap:8, alignItems:"center" }}>
-          {isAdmin && (
-            <span style={{ fontSize:11, background:"#f59e0b22", color:"#f59e0b", border:"1px solid #f59e0b44", borderRadius:6, padding:"3px 10px", fontWeight:700 }}>
-              ADMIN
-            </span>
-          )}
-          {isAdmin
-            ? <button onClick={()=>setMode("public")} style={{ background:"#ef444422", border:"1px solid #ef444444", color:"#fca5a5", borderRadius:8, padding:"6px 12px", cursor:"pointer", fontSize:12, fontWeight:600 }}>🚪 Keluar</button>
-            : <button onClick={()=>setMode("login")} style={{ background:"#ffffff11", border:"1px solid #ffffff22", color:"#94a3b8", borderRadius:8, padding:"6px 12px", cursor:"pointer", fontSize:12, fontWeight:600 }}>🔐 Admin</button>
-          }
+        {/* Baris bawah: navigasi halaman */}
+        <div style={{ display:"flex" }}>
+          {[
+            ["kalisari","🏠","FFU Kalisari"],
+            ["kecamatan","🏙️","Kecamatan"],
+          ].map(([p,icon,label])=>(
+            <button key={p} onClick={()=>setPage(p)}
+              style={{ flex:1, padding:"10px 8px", background:"none", border:"none", cursor:"pointer", fontWeight:700, fontSize:13,
+                color: page===p?"#fff":"#64748b",
+                borderBottom: page===p?`3px solid ${p==="kecamatan"?KEC_COLOR:"#3b82f6"}`:"3px solid transparent",
+                transition:"all 0.15s", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}>
+              <span>{icon}</span>
+              <span style={{ fontSize:13 }}>{label}</span>
+            </button>
+          ))}
         </div>
       </nav>
 
