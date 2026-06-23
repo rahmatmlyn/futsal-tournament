@@ -1129,7 +1129,7 @@ function KecamatanTab({ kecamatan, setKecamatan, isAdmin }) {
 }
 
 // ─── PUBLIC VIEW ─────────────────────────────────────────────────
-function PublicView({ teams, matches, knockout, sponsors, roster, kecamatan, onAdminClick }) {
+function PublicView({ teams, matches, knockout, sponsors, roster }) {
   const [tab, setTab] = useState("standings");
   const statsA=calcStats(teams.A,matches.A);
   const statsB=calcStats(teams.B,matches.B);
@@ -1146,21 +1146,16 @@ function PublicView({ teams, matches, knockout, sponsors, roster, kecamatan, onA
     <div style={{ fontFamily:"Inter,sans-serif", background:"#f8fafc", minHeight:"100vh", padding:16 }}>
       <div style={{ maxWidth:900, margin:"0 auto" }}>
         {/* Header */}
-        <div style={{ background:"linear-gradient(135deg,#1e3a5f,#2563eb)", borderRadius:16, padding:"20px 24px", marginBottom:20, color:"#fff", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <div>
-            <h1 style={{ margin:0, fontSize:22, fontWeight:700 }}>Turnamen Futsal For Unity Kelurahan Kalisari 2026</h1>
-            <p style={{ margin:"4px 0 0", opacity:0.8, fontSize:13 }}>8 Tim · 2 Grup · Live Standings</p>
-            <p style={{ margin:"4px 0 0", opacity:0.8, fontSize:13 }}>Created by Rahmat Mulyana Panitia FFU 2026</p>
-          </div>
-          <button onClick={onAdminClick} style={{ background:"#ffffff22", border:"1px solid #ffffff44", color:"#fff", borderRadius:10, padding:"8px 14px", cursor:"pointer", fontSize:12, fontWeight:600 }}>
-            🔐 Admin
-          </button>
+        <div style={{ background:"linear-gradient(135deg,#1e3a5f,#2563eb)", borderRadius:16, padding:"20px 24px", marginBottom:20, color:"#fff" }}>
+          <h1 style={{ margin:0, fontSize:22, fontWeight:700 }}>Turnamen Futsal For Unity Kelurahan Kalisari 2026</h1>
+          <p style={{ margin:"4px 0 0", opacity:0.8, fontSize:13 }}>8 Tim · 2 Grup · Live Standings</p>
+          <p style={{ margin:"4px 0 0", opacity:0.8, fontSize:13 }}>Created by Rahmat Mulyana Panitia FFU 2026</p>
         </div>
 
         {/* Tabs */}
         <div style={{ display:"flex", gap:8, marginBottom:16, flexWrap:"wrap" }}>
-          {[["standings","📊 Klasemen"],["schedule","📋 Jadwal & Hasil"],["topscorer","⚽ Top Skor"],["advance","Tim Lolos Semifinal"],["bracket","🏆 Bagan Semifinal"],["roster","👥 Tim & Pemain"],["kecamatan","🏙️ Kecamatan"]].map(([k,v])=>(
-            <button key={k} onClick={()=>setTab(k)} style={{ padding:"8px 18px", borderRadius:8, border:"none", cursor:"pointer", fontWeight:600, fontSize:13, background:tab===k?(k==="kecamatan"?KEC_COLOR:"#2563eb"):"#fff", color:tab===k?"#fff":"#64748b", boxShadow:tab===k?`0 2px 8px ${k==="kecamatan"?KEC_COLOR+"44":"#2563eb44"}`:"0 1px 3px #0001" }}>{v}</button>
+          {[["standings","📊 Klasemen"],["schedule","📋 Jadwal & Hasil"],["topscorer","⚽ Top Skor"],["advance","Tim Lolos Semifinal"],["bracket","🏆 Bagan Semifinal"],["roster","👥 Tim & Pemain"]].map(([k,v])=>(
+            <button key={k} onClick={()=>setTab(k)} style={{ padding:"8px 18px", borderRadius:8, border:"none", cursor:"pointer", fontWeight:600, fontSize:13, background:tab===k?"#2563eb":"#fff", color:tab===k?"#fff":"#64748b", boxShadow:tab===k?"0 2px 8px #2563eb44":"0 1px 3px #0001" }}>{v}</button>
           ))}
         </div>
 
@@ -1281,10 +1276,6 @@ function PublicView({ teams, matches, knockout, sponsors, roster, kecamatan, onA
             </div>
           </div>
         )}
-        {tab==="kecamatan" && (
-          <KecamatanTab kecamatan={kecamatan} setKecamatan={()=>{}} isAdmin={false} />
-        )}
-
         <SponsorSection sponsors={sponsors} />
         <Footer />
       </div>
@@ -1293,7 +1284,7 @@ function PublicView({ teams, matches, knockout, sponsors, roster, kecamatan, onA
 }
 
 // ─── ADMIN VIEW ───────────────────────────────────────────────────
-function AdminView({ teams, setTeams, matches, setMatches, knockout, setKnockout, sponsors, setSponsors, roster, setRoster, kecamatan, setKecamatan, onSave, onLogout }) {
+function AdminView({ teams, setTeams, matches, setMatches, knockout, setKnockout, sponsors, setSponsors, roster, setRoster, onSave }) {
   const [tab, setTab] = useState("group");
   const [openScorer, setOpenScorer] = useState(null); // matchId yang sedang dibuka
   const [newScorer, setNewScorer] = useState({ name: "", side: "home", goals: 1 });
@@ -1352,21 +1343,15 @@ function AdminView({ teams, setTeams, matches, setMatches, knockout, setKnockout
   };
 
   return (
-    <div style={{ fontFamily:"Inter,sans-serif", background:"#f8fafc", minHeight:"100vh", padding:16 }}>
-      <div style={{ maxWidth:900, margin:"0 auto" }}>
-        <div style={{ background:"linear-gradient(135deg,#1e3a5f,#2563eb)", borderRadius:16, padding:"20px 24px", marginBottom:20, color:"#fff", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+    <div>
+        <div style={{ background:"linear-gradient(135deg,#1e3a5f,#2563eb)", borderRadius:16, padding:"16px 20px", marginBottom:16, color:"#fff", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
           <div>
-            <h1 style={{ margin:0, fontSize:22, fontWeight:700 }}>⚙️ Panel Admin</h1>
-            <p style={{ margin:"4px 0 0", opacity:0.8, fontSize:13 }}>Edit data pertandingan futsal</p>
+            <h1 style={{ margin:0, fontSize:18, fontWeight:700 }}>⚙️ Panel Admin — FFU Kalisari</h1>
+            <p style={{ margin:"4px 0 0", opacity:0.8, fontSize:12 }}>Edit data pertandingan futsal</p>
           </div>
-          <div style={{ display:"flex", gap:8 }}>
-            <button onClick={handleSave} style={{ background: saved ? "#10b98122" : "#ffffff22", border: `1px solid ${saved ? "#10b98166" : "#ffffff44"}`, color: saved ? "#6ee7b7" : "#fff", borderRadius:10, padding:"8px 16px", cursor:"pointer", fontSize:12, fontWeight:700, transition:"all 0.2s" }}>
-              {saved ? "✅ Tersimpan!" : "💾 Simpan"}
-            </button>
-            <button onClick={onLogout} style={{ background:"#ef444422", border:"1px solid #ef444466", color:"#fca5a5", borderRadius:10, padding:"8px 14px", cursor:"pointer", fontSize:12, fontWeight:600 }}>
-              🚪 Logout
-            </button>
-          </div>
+          <button onClick={handleSave} style={{ background: saved ? "#10b98122" : "#ffffff22", border: `1px solid ${saved ? "#10b98166" : "#ffffff44"}`, color: saved ? "#6ee7b7" : "#fff", borderRadius:10, padding:"8px 16px", cursor:"pointer", fontSize:12, fontWeight:700, transition:"all 0.2s" }}>
+            {saved ? "✅ Tersimpan!" : "💾 Simpan"}
+          </button>
         </div>
 
         <div style={{ background:"#fef3c7", border:"1px solid #fcd34d", borderRadius:10, padding:"10px 16px", marginBottom:16, fontSize:12, color:"#92400e" }}>
@@ -1374,8 +1359,8 @@ function AdminView({ teams, setTeams, matches, setMatches, knockout, setKnockout
         </div>
 
         <div style={{ display:"flex", gap:8, marginBottom:16, flexWrap:"wrap" }}>
-          {[["group","📋 Grup & Jadwal"],["standings","📊 Klasemen"],["topscorer","⚽ Top Skor"],["bracket","🏆 Bagan"],["roster","👥 Tim & Pemain"],["advance","Tim Lolos"],["sponsor","✨ Sponsor"],["kecamatan","🏙️ Kecamatan"]].map(([k,v])=>(
-            <button key={k} onClick={()=>setTab(k)} style={{ padding:"8px 18px", borderRadius:8, border:"none", cursor:"pointer", fontWeight:600, fontSize:13, background:tab===k?(k==="kecamatan"?KEC_COLOR:"#2563eb"):"#fff", color:tab===k?"#fff":"#64748b", boxShadow:tab===k?`0 2px 8px ${k==="kecamatan"?KEC_COLOR+"44":"#2563eb44"}`:"0 1px 3px #0001" }}>{v}</button>
+          {[["group","📋 Grup & Jadwal"],["standings","📊 Klasemen"],["topscorer","⚽ Top Skor"],["bracket","🏆 Bagan"],["roster","👥 Tim & Pemain"],["advance","Tim Lolos"],["sponsor","✨ Sponsor"]].map(([k,v])=>(
+            <button key={k} onClick={()=>setTab(k)} style={{ padding:"8px 18px", borderRadius:8, border:"none", cursor:"pointer", fontWeight:600, fontSize:13, background:tab===k?"#2563eb":"#fff", color:tab===k?"#fff":"#64748b", boxShadow:tab===k?"0 2px 8px #2563eb44":"0 1px 3px #0001" }}>{v}</button>
           ))}
         </div>
 
@@ -1592,11 +1577,6 @@ function AdminView({ teams, setTeams, matches, setMatches, knockout, setKnockout
         {tab==="sponsor" && (
           <SponsorAdmin sponsors={sponsors} setSponsors={setSponsors} />
         )}
-
-        {tab==="kecamatan" && (
-          <KecamatanTab kecamatan={kecamatan} setKecamatan={setKecamatan} isAdmin={true} />
-        )}
-      </div>
     </div>
   );
 }
@@ -1669,6 +1649,7 @@ export default function App() {
   const [roster, setRoster] = useState(initRoster);
   const [kecamatan, setKecamatan] = useState(initKecamatan);
   const [mode, setMode] = useState("public");
+  const [page, setPage] = useState("kalisari"); // "kalisari" | "kecamatan"
   const [loading, setLoading] = useState(true);
 
   // Sinkron real-time dari Firestore → semua perangkat update otomatis
@@ -1707,22 +1688,60 @@ export default function App() {
     </div>
   );
 
+  const isAdmin = mode === "admin";
+
   if (mode === "login") return (
     <>
       <LoginScreen onLogin={()=>setMode("admin")} onBack={()=>setMode("public")} />
       <Analytics />
     </>
   );
-  if (mode === "admin") return (
-    <>
-      <AdminView teams={teams} setTeams={setTeams} matches={matches} setMatches={setMatches} knockout={knockout} setKnockout={setKnockout} sponsors={sponsors} setSponsors={setSponsors} roster={roster} setRoster={setRoster} kecamatan={kecamatan} setKecamatan={setKecamatan} onSave={handleSave} onLogout={()=>setMode("public")} />
-      <Analytics />
-    </>
-  );
+
   return (
-    <>
-      <PublicView teams={teams} matches={matches} knockout={knockout} sponsors={sponsors} roster={roster} kecamatan={kecamatan} onAdminClick={()=>setMode("login")} />
+    <div style={{ fontFamily:"Inter,sans-serif", background:"#f8fafc", minHeight:"100vh" }}>
+      {/* ── Navbar ── */}
+      <nav style={{ background:"#1e293b", padding:"0 16px", display:"flex", alignItems:"center", gap:0, position:"sticky", top:0, zIndex:100, boxShadow:"0 2px 8px #0003" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12, paddingRight:16, borderRight:"1px solid #334155", marginRight:8 }}>
+          <span style={{ fontSize:20 }}>⚽</span>
+          <span style={{ color:"#fff", fontWeight:800, fontSize:13, lineHeight:1.3 }}>FFU<br/><span style={{ fontWeight:400, fontSize:11, opacity:0.7 }}>Kalisari 2026</span></span>
+        </div>
+        {[
+          ["kalisari","🏠 FFU Kalisari"],
+          ["kecamatan","🏙️ Kecamatan"],
+        ].map(([p,label])=>(
+          <button key={p} onClick={()=>setPage(p)}
+            style={{ padding:"14px 16px", background:"none", border:"none", cursor:"pointer", fontWeight:700, fontSize:13,
+              color: page===p?"#fff":"#94a3b8",
+              borderBottom: page===p?`3px solid ${p==="kecamatan"?KEC_COLOR:"#3b82f6"}`:"3px solid transparent",
+              transition:"all 0.15s" }}>
+            {label}
+          </button>
+        ))}
+        <div style={{ marginLeft:"auto", display:"flex", gap:8, alignItems:"center" }}>
+          {isAdmin && (
+            <span style={{ fontSize:11, background:"#f59e0b22", color:"#f59e0b", border:"1px solid #f59e0b44", borderRadius:6, padding:"3px 10px", fontWeight:700 }}>
+              ADMIN
+            </span>
+          )}
+          {isAdmin
+            ? <button onClick={()=>setMode("public")} style={{ background:"#ef444422", border:"1px solid #ef444444", color:"#fca5a5", borderRadius:8, padding:"6px 12px", cursor:"pointer", fontSize:12, fontWeight:600 }}>🚪 Keluar</button>
+            : <button onClick={()=>setMode("login")} style={{ background:"#ffffff11", border:"1px solid #ffffff22", color:"#94a3b8", borderRadius:8, padding:"6px 12px", cursor:"pointer", fontSize:12, fontWeight:600 }}>🔐 Admin</button>
+          }
+        </div>
+      </nav>
+
+      {/* ── Page content ── */}
+      <div style={{ maxWidth:900, margin:"0 auto", padding:16 }}>
+        {page === "kalisari" && (
+          isAdmin
+            ? <AdminView teams={teams} setTeams={setTeams} matches={matches} setMatches={setMatches} knockout={knockout} setKnockout={setKnockout} sponsors={sponsors} setSponsors={setSponsors} roster={roster} setRoster={setRoster} onSave={handleSave} />
+            : <PublicView teams={teams} matches={matches} knockout={knockout} sponsors={sponsors} roster={roster} />
+        )}
+        {page === "kecamatan" && (
+          <KecamatanTab kecamatan={kecamatan} setKecamatan={isAdmin ? setKecamatan : ()=>{}} isAdmin={isAdmin} onSave={handleSave} />
+        )}
+      </div>
       <Analytics />
-    </>
+    </div>
   );
 }
