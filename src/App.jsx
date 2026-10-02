@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { db } from "./firebase";
-import { doc, setDoc, onSnapshot } from "firebase/firestore";
+import { doc, setDoc, getDoc, onSnapshot } from "firebase/firestore";
 import { Analytics } from "@vercel/analytics/react";
 
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD;
@@ -1429,8 +1429,11 @@ export default function App() {
     return () => unsub();
   }, []);
 
+  // Dokumen ini dipakai bersama project Kecamatan (key: kecamatan) — pertahankan field lain
   const handleSave = async () => {
-    await setDoc(DATA_DOC, { teams, matches, knockout, sponsors, roster });
+    const snap = await getDoc(DATA_DOC);
+    const existing = snap.exists() ? snap.data() : {};
+    await setDoc(DATA_DOC, { ...existing, teams, matches, knockout, sponsors, roster });
   };
 
   if (loading) return (
